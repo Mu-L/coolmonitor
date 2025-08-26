@@ -1,7 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { Monitor } from '@prisma/client';
-import { CheckResult } from './checker';
-import { generateUltraCompactId } from '../utils/ultra-compact-id';
+
 import { generateCompactMessage } from '../utils/compact-message';
 
 interface RecordStatusParams {
@@ -10,26 +8,22 @@ interface RecordStatusParams {
   message: string;
   ping?: number;
   details?: Record<string, unknown>;
-  monitorType?: string;
 }
 
 export async function recordMonitorStatus(params: RecordStatusParams) {
-  const { monitorId, status, message, ping, details, monitorType } = params;
+  const { monitorId, status, message, ping } = params;
 
   try {
-    // 使用7位超紧凑ID和消息优化存储：正常状态message为null，错误状态保留详细信息
-    const ultraCompactId = generateUltraCompactId();
+    // 使用Prisma默认的UUID生成，确保唯一性和稳定性
     const compactMessage = generateCompactMessage(status, message, ping);
 
     // 创建状态记录
     const record = await prisma.monitorStatus.create({
       data: {
-        id: ultraCompactId,
         monitorId,
         status,
         message: compactMessage,
-        ping,
-        details: details ? JSON.stringify(details) : null
+        ping
       }
     });
 
@@ -38,9 +32,7 @@ export async function recordMonitorStatus(params: RecordStatusParams) {
       where: { id: monitorId },
       data: {
         lastCheckAt: new Date(),
-        lastStatus: status,
-        lastMessage: message,
-        lastPing: ping
+        lastStatus: status
       }
     });
 
@@ -59,7 +51,7 @@ export async function cleanupStatusHistory(days: number = 30) {
   try {
     const result = await prisma.monitorStatus.deleteMany({
       where: {
-        createdAt: {
+        timestamp: {
           lt: cutoffDate
         }
       }

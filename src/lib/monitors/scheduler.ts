@@ -3,7 +3,7 @@ import { prisma } from '../prisma';
 import { checkers } from './index';
 import { MONITOR_STATUS, MonitorHttpConfig, MonitorKeywordConfig, MonitorPortConfig, MonitorDatabaseConfig, MonitorPushConfig, MonitorIcmpConfig } from './types';
 import { sendStatusChangeNotifications } from './notification-service';
-import { generateUltraCompactId } from '../utils/ultra-compact-id';
+
 import { generateCompactMessage } from '../utils/compact-message';
 
 // 定义监控项数据类型
@@ -407,18 +407,19 @@ async function recordMonitorStatus(
   prevStatus: number | null,
   monitorType?: string
 ) {
-  const timestamp = new Date();
-  
-  // 使用7位超紧凑ID，比UUID短81%，比原紧凑ID短42%
-  const ultraCompactId = generateUltraCompactId();
-  
   // 使用紧凑消息策略：正常状态存储null，错误状态保留详细信息
   const compactMessage = generateCompactMessage(status, message, ping || undefined);
   
-  await prisma.$executeRaw`
-    INSERT INTO "MonitorStatus" ("id", "monitorId", "status", "message", "ping", "timestamp")
-    VALUES (${ultraCompactId}, ${monitorId}, ${status}, ${compactMessage}, ${ping}, ${timestamp})
-  `;
+  // 使用Prisma的create方法，让数据库自动生成UUID
+  await prisma.monitorStatus.create({
+    data: {
+      monitorId,
+      status,
+      message: compactMessage,
+      ping,
+      timestamp: new Date()
+    }
+  });
 
   // 触发状态变更通知时使用原始消息
   try {
