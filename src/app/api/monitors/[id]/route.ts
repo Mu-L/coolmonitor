@@ -71,15 +71,18 @@ export async function PUT(request: Request, context: { params: { id: string } })
     // 更新监控项
     const monitor = await monitorOperations.updateMonitor(id, updateData);
     
-    // 如果监控处于激活状态，则重新调度监控
+    // 如果监控处于激活状态，则异步重新调度监控
     if (monitor.active) {
-      try {
-        const { scheduleMonitor } = await import('@/lib/monitors/scheduler');
-        await scheduleMonitor(id);
-      } catch (error) {
-        console.error('更新后重新调度监控失败:', error);
-        // 更新成功但调度失败不影响返回结果
-      }
+      // 使用 setImmediate 或 setTimeout 将调度任务放到下一个事件循环中执行
+      setImmediate(async () => {
+        try {
+          const { scheduleMonitor } = await import('@/lib/monitors/scheduler');
+          await scheduleMonitor(id);
+        } catch (error) {
+          console.error('更新后重新调度监控失败:', error);
+          // 异步调度失败不影响用户操作结果
+        }
+      });
     }
     
     return NextResponse.json({
@@ -151,23 +154,29 @@ export async function PATCH(request: Request, context: { params: { id: string } 
     // 更新监控项状态
     const monitor = await monitorOperations.updateMonitor(id, { active: data.active });
     
-    // 根据状态启动或停止监控
+    // 根据状态异步启动或停止监控
     if (data.active) {
-      try {
-        const { scheduleMonitor } = await import('@/lib/monitors/scheduler');
-        await scheduleMonitor(id);
-      } catch (error) {
-        console.error('启动监控失败:', error);
-        // 更新成功但启动失败不影响返回结果
-      }
+      // 异步启动监控，不阻塞响应
+      setImmediate(async () => {
+        try {
+          const { scheduleMonitor } = await import('@/lib/monitors/scheduler');
+          await scheduleMonitor(id);
+        } catch (error) {
+          console.error('启动监控失败:', error);
+          // 异步启动失败不影响用户操作结果
+        }
+      });
     } else {
-      try {
-        const { stopMonitor } = await import('@/lib/monitors/scheduler');
-        stopMonitor(id);
-      } catch (error) {
-        console.error('停止监控失败:', error);
-        // 更新成功但停止失败不影响返回结果
-      }
+      // 停止监控是同步操作，但也可以异步执行避免阻塞
+      setImmediate(async () => {
+        try {
+          const { stopMonitor } = await import('@/lib/monitors/scheduler');
+          stopMonitor(id);
+        } catch (error) {
+          console.error('停止监控失败:', error);
+          // 异步停止失败不影响用户操作结果
+        }
+      });
     }
     
     return NextResponse.json({

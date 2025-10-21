@@ -91,14 +91,16 @@ export async function POST(request: Request) {
     // 创建监控项
     const monitor = await monitorOperations.createMonitor(monitorData);
     
-    // 立即调度监控项开始检查
-    try {
-      const { scheduleMonitor } = await import('@/lib/monitors/scheduler');
-      await scheduleMonitor(monitor.id);
-    } catch (error) {
-      console.error('启动新创建的监控失败:', error);
-      // 创建成功但启动失败不影响返回结果
-    }
+    // 异步调度监控项开始检查，避免阻塞用户响应
+    setImmediate(async () => {
+      try {
+        const { scheduleMonitor } = await import('@/lib/monitors/scheduler');
+        await scheduleMonitor(monitor.id);
+      } catch (error) {
+        console.error('启动新创建的监控失败:', error);
+        // 异步启动失败不影响用户操作结果
+      }
+    });
     
     return NextResponse.json({ 
       message: '监控项创建成功',

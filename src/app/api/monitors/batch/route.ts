@@ -77,62 +77,64 @@ export async function POST(request: Request) {
         ids.map(id => monitorOperations.updateMonitor(id, { active }))
       );
       
-      // 处理监控调度
+      // 异步处理监控调度，避免阻塞用户响应
       if (active) {
-        try {
-          const { scheduleMonitor } = await import('@/lib/monitors/scheduler');
-          
-          // 启动监控
-          const scheduleResults = await Promise.allSettled(
-            ids.map(id => scheduleMonitor(id))
-          );
-          
-          // 统计成功和失败的数量
-          const succeeded = scheduleResults.filter(r => r.status === 'fulfilled').length;
-          const failed = scheduleResults.length - succeeded;
-          
-          return NextResponse.json({
-            message: `成功启动 ${succeeded} 个监控项${failed > 0 ? `，${failed} 个启动失败` : ''}`,
-            succeeded,
-            failed
-          });
-        } catch (error) {
-          console.error('导入启动监控函数失败:', error);
-          return NextResponse.json(
-            { error: '启动监控失败，请稍后重试' },
-            { status: 500 }
-          );
-        }
+        // 异步启动监控
+        setImmediate(async () => {
+          try {
+            const { scheduleMonitor } = await import('@/lib/monitors/scheduler');
+            
+            // 启动监控
+            const scheduleResults = await Promise.allSettled(
+              ids.map(id => scheduleMonitor(id))
+            );
+            
+            // 统计成功和失败的数量
+            const succeeded = scheduleResults.filter(r => r.status === 'fulfilled').length;
+            const failed = scheduleResults.length - succeeded;
+            
+            console.log(`批量启动监控完成: 成功 ${succeeded} 个，失败 ${failed} 个`);
+          } catch (error) {
+            console.error('批量启动监控失败:', error);
+          }
+        });
+        
+        return NextResponse.json({
+          message: `正在启动 ${ids.length} 个监控项`,
+          succeeded: ids.length,
+          failed: 0
+        });
       } else {
-        try {
-          const { stopMonitor } = await import('@/lib/monitors/scheduler');
-          
-          // 停止监控
-          ids.forEach(id => {
-            try {
-              stopMonitor(id);
-            } catch (err) {
-              console.error(`停止监控 ${id} 失败:`, err);
-              // 继续处理其他监控项
-            }
-          });
-          
-          // 统计成功和失败的数量
-          const succeeded = updateResults.filter(r => r.status === 'fulfilled').length;
-          const failed = updateResults.length - succeeded;
-          
-          return NextResponse.json({
-            message: `成功停止 ${succeeded} 个监控项${failed > 0 ? `，${failed} 个停止失败` : ''}`,
-            succeeded,
-            failed
-          });
-        } catch (error) {
-          console.error('导入停止监控函数失败:', error);
-          return NextResponse.json(
-            { error: '停止监控失败，请稍后重试' },
-            { status: 500 }
-          );
-        }
+        // 异步停止监控
+        setImmediate(async () => {
+          try {
+            const { stopMonitor } = await import('@/lib/monitors/scheduler');
+            
+            // 停止监控
+            ids.forEach(id => {
+              try {
+                stopMonitor(id);
+              } catch (err) {
+                console.error(`停止监控 ${id} 失败:`, err);
+                // 继续处理其他监控项
+              }
+            });
+            
+            console.log(`批量停止监控完成: 处理了 ${ids.length} 个监控项`);
+          } catch (error) {
+            console.error('批量停止监控失败:', error);
+          }
+        });
+        
+        // 统计成功和失败的数量
+        const succeeded = updateResults.filter(r => r.status === 'fulfilled').length;
+        const failed = updateResults.length - succeeded;
+        
+        return NextResponse.json({
+          message: `正在停止 ${ids.length} 个监控项`,
+          succeeded,
+          failed
+        });
       }
     }
   } catch (error) {

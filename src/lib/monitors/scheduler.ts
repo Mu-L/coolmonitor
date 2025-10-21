@@ -73,7 +73,7 @@ export async function scheduleMonitor(monitorId: string) {
         } catch (error) {
           console.error(`监控检查异常 ${monitorId}:`, error);
           // 记录监控失败状态
-          await recordMonitorStatus(monitorId, MONITOR_STATUS.DOWN, '监控任务执行异常', null, monitorData.lastStatus || null, monitorData.type);
+          await recordMonitorStatus(monitorId, MONITOR_STATUS.DOWN, '监控任务执行异常', null, monitorData.lastStatus || null);
         }
       });
     } else if (monitorData.interval <= 3600) {
@@ -88,7 +88,7 @@ export async function scheduleMonitor(monitorId: string) {
         } catch (error) {
           console.error(`监控检查异常 ${monitorId}:`, error);
           // 记录监控失败状态
-          await recordMonitorStatus(monitorId, MONITOR_STATUS.DOWN, '监控任务执行异常', null, monitorData.lastStatus || null, monitorData.type);
+          await recordMonitorStatus(monitorId, MONITOR_STATUS.DOWN, '监控任务执行异常', null, monitorData.lastStatus || null);
         }
       });
     } else {
@@ -109,7 +109,7 @@ export async function scheduleMonitor(monitorId: string) {
         } catch (error) {
           console.error(`监控检查异常 ${monitorId}:`, error);
           // 记录监控失败状态
-          await recordMonitorStatus(monitorId, MONITOR_STATUS.DOWN, '监控任务执行异常', null, monitorData.lastStatus || null, monitorData.type);
+          await recordMonitorStatus(monitorId, MONITOR_STATUS.DOWN, '监控任务执行异常', null, monitorData.lastStatus || null);
         }
       });
     }
@@ -189,6 +189,7 @@ async function executeMonitorCheck(monitorId: string) {
   let status = MONITOR_STATUS.DOWN;
   let message = '';
   let ping: number | null = null;
+  let wasRetrySuccessful = false; // 标记是否为重试成功
 
   try {
     // 对于 Push 类型监控，特殊处理
@@ -226,7 +227,7 @@ async function executeMonitorCheck(monitorId: string) {
       if (newStatus === MONITOR_STATUS.DOWN) {
         // 失败状态，记录并发送通知
         message = `推送超时: 最后推送时间 ${lastPushTime ? new Date(lastPushTime).toLocaleString() : '未知'}`;
-        await recordMonitorStatus(monitorId, newStatus, message, null, lastStatus, 'push');
+        await recordMonitorStatus(monitorId, newStatus, message, null, lastStatus);
       } else if (newStatus === MONITOR_STATUS.UP && lastStatus === MONITOR_STATUS.DOWN) {
         // 从失败恢复为成功，发送恢复通知
         message = `推送恢复正常: 最后推送时间 ${new Date(lastPushTime).toLocaleString()}`;
@@ -338,9 +339,10 @@ async function executeMonitorCheck(monitorId: string) {
 
         // 如果检查成功，跳出重试循环
         if (checkResult && checkResult.status === MONITOR_STATUS.UP) {
-          // 如果是重试成功，更新消息
+          // 如果是重试成功，更新消息并标记
           if (attempt > 0) {
             checkResult.message = `重试成功 (${attempt}/${monitorData.retries || 0}): ${checkResult.message}`;
+            wasRetrySuccessful = true;
           }
           break;
         }
@@ -383,7 +385,9 @@ async function executeMonitorCheck(monitorId: string) {
   }
 
   // 记录监控状态
-  await recordMonitorStatus(monitorId, status, message, ping, monitorData.lastStatus || null, monitorData.type);
+  // 如果是重试成功，不应该触发恢复通知，因为从用户角度看这次检查就是成功的
+  const effectivePrevStatus = wasRetrySuccessful ? MONITOR_STATUS.UP : (monitorData.lastStatus || null);
+  await recordMonitorStatus(monitorId, status, message, ping, effectivePrevStatus);
 
   // 更新最后检查时间和下次检查时间
   const lastCheckAt = new Date();
@@ -404,8 +408,7 @@ async function recordMonitorStatus(
   status: number, 
   message: string, 
   ping: number | null,
-  prevStatus: number | null,
-  monitorType?: string
+  prevStatus: number | null
 ) {
   // 使用紧凑消息策略：正常状态存储null，错误状态保留详细信息
   const compactMessage = generateCompactMessage(status, message, ping || undefined);
