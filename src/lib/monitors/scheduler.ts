@@ -386,7 +386,7 @@ async function executeMonitorCheck(monitorId: string) {
 
   // 记录监控状态
   // 如果是重试成功，不应该触发恢复通知，因为从用户角度看这次检查就是成功的
-  const effectivePrevStatus = wasRetrySuccessful ? MONITOR_STATUS.UP : (monitorData.lastStatus || null);
+  const effectivePrevStatus = (monitorData.lastStatus || null);
   await recordMonitorStatus(monitorId, status, message, ping, effectivePrevStatus);
 
   // 更新最后检查时间和下次检查时间
