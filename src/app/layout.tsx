@@ -12,7 +12,26 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" className="dark">
+    <html lang="zh-CN">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+            (function() {
+              try {
+                var STORAGE_KEY = 'coolmonitor-theme';
+                var saved = localStorage.getItem(STORAGE_KEY) || 'dark';
+                var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                var resolved = saved === 'system' ? (isDark ? 'dark' : 'light') : saved;
+                var root = document.documentElement;
+                root.classList.remove('dark','light');
+                root.classList.add(resolved);
+              } catch (e) {}
+            })();
+          `,
+          }}
+        />
+      </head>
       <body className="font-sans bg-light-bg dark:bg-dark-bg text-light-text-primary dark:text-dark-text-primary">
         <ThemeProvider defaultTheme="dark">
           <AuthContext>
