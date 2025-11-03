@@ -264,7 +264,13 @@ export async function sendStatusChangeNotifications(
 
       // 更新通知缓存
       notificationCache.set(monitorId, { time: now, status: 0 });
-    } else if (status === 1 && realPrevStatus === 0 && !isNewMonitor) {
+    } else if (
+      status === 1 &&
+      realPrevStatus === 0 &&
+      !isNewMonitor &&
+      lastNotification &&
+      lastNotification.status === 0
+    ) {
       // 状态从故障恢复为正常，并且不是新添加的监控时才发送恢复通知
       
       // 获取恢复前的失败时长
