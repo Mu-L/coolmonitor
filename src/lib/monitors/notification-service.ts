@@ -444,7 +444,7 @@ async function sendEmailNotification(
 /**
  * 发送Webhook通知
  */
-async function sendWebhookNotification(
+export async function sendWebhookNotification(
   config: WebhookConfig,
   data: NotificationData
 ) {

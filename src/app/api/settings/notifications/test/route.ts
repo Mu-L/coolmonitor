@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer';
 import axios from 'axios';
 import crypto from 'crypto';
 import { formatDateTime } from '@/lib/monitors/utils';
+import { sendWebhookNotification } from '@/lib/monitors/notification-service';
 import { validateAuth } from '@/lib/auth-helpers';
 
 // 定义不同类型通知的配置接口
@@ -133,9 +134,9 @@ async function testEmailNotification(name: string, config: EmailConfig) {
   }
 }
 
-// 测试Webhook通知
+// 测试Webhook通知（复用正式通知的发送逻辑，保证格式完全一致）
 async function testWebhookNotification(name: string, config: WebhookConfig) {
-  const { url, method = 'POST', headers, bodyTemplate, contentType = 'application/json' } = config;
+  const { url } = config;
   
   if (!url) {
     return NextResponse.json(
@@ -145,9 +146,7 @@ async function testWebhookNotification(name: string, config: WebhookConfig) {
   }
 
   try {
-    console.log(`开始测试Webhook通知: ${name}, URL: ${url}, Method=${method}, ContentType=${contentType}, 自定义模板=${!!bodyTemplate}, 自定义请求头=${!!headers}`);
-    
-    // 准备测试用的通知数据，用于模板变量替换
+    // 构造一份与正式通知结构一致的测试数据
     const testData = {
       monitorName: '测试监控项',
       monitorType: 'http',
@@ -157,80 +156,15 @@ async function testWebhookNotification(name: string, config: WebhookConfig) {
       time: formatDateTime(),
       message: '这是一条来自酷监控的测试通知'
     };
-    
-    // 准备默认的webhook数据 - 使用与实际通知一致的格式
-    const webhookData = {
-      event: 'status_change',
-      timestamp: new Date().toISOString(),
-      monitor: {
-        name: testData.monitorName,
-        type: testData.monitorType,
-        status: testData.statusText,  // 中文状态描述
-        status_code: testData.statusCode,  // 状态码: 1=正常
-        time: testData.time,
-        message: testData.message,
-        address: null as string | null
-      },
-      // 添加失败信息结构，与实际通知保持一致
-      failure_info: null
-    };
-    
-    // 处理请求体
-    let requestBody: string | Record<string, unknown>;
-    if (bodyTemplate) {
-      // 使用自定义模板，替换变量
-      let body = bodyTemplate;
-      Object.entries(testData).forEach(([key, value]) => {
-        // 对变量值进行JSON转义，只转义真正的控制字符
-        const escapedValue = String(value)
-          .replace(/\\/g, '\\\\')  // 反斜杠
-          .replace(/"/g, '\\"')    // 双引号
-          .replace(/\n/g, '\\n')   // 换行符
-          .replace(/\r/g, '\\r')   // 回车符
-          .replace(/\t/g, '\\t');  // 制表符
-        
-        body = body.replace(new RegExp(`\\{${key}\\}`, 'g'), escapedValue);
-      });
-      
-      // 根据Content-Type处理请求体
-      if (contentType === 'application/json') {
-        try {
-          requestBody = JSON.parse(body);
-        } catch (error) {
-          console.error('自定义JSON模板解析失败，使用原始字符串:', error);
-          console.error('原始模板:', body);
-          requestBody = body;
-        }
-      } else {
-        requestBody = body;
-      }
-    } else {
-      // 使用默认数据结构
-      requestBody = webhookData;
-    }
-    
-    console.log(`Webhook测试数据: ${JSON.stringify(requestBody)}`);
-    
-    // 根据Content-Type设置请求头
-    const requestHeaders: Record<string, string> = {
-      'Content-Type': contentType,
-      'User-Agent': 'CoolMonitor-Notification-Service'
-    };
-    if (headers) {
-      Object.assign(requestHeaders, headers);
-    }
-    
-    // 发送Webhook请求
-    const response = await axios({
-      method: method,
-      url: url,
-      data: requestBody,
-      headers: requestHeaders,
-      timeout: 10000 // 10秒超时
-    });
-    
+
+    console.log(`开始测试Webhook通知: ${name}, URL: ${url}`);
+    console.log(`Webhook测试配置: ${JSON.stringify(config)}`);
+
+    // 直接复用正式的 Webhook 发送逻辑
+    const response = await sendWebhookNotification(config, testData);
+
     console.log(`Webhook测试响应: 状态码=${response.status}, 数据=${JSON.stringify(response.data)}`);
-    
+
     if (response.status >= 200 && response.status < 300) {
       return NextResponse.json({ success: true, message: `测试Webhook请求已成功发送，响应状态码: ${response.status}` });
     } else {
@@ -242,7 +176,7 @@ async function testWebhookNotification(name: string, config: WebhookConfig) {
   } catch (error) {
     console.error('发送Webhook通知失败:', error);
     let errorMessage = '发送Webhook请求失败';
-    
+
     if (axios.isAxiosError(error)) {
       if (error.response) {
         console.error(`Webhook请求失败，服务器响应: 状态码=${error.response.status}, 数据=${JSON.stringify(error.response.data)}`);
@@ -258,7 +192,7 @@ async function testWebhookNotification(name: string, config: WebhookConfig) {
       console.error(`Webhook请求失败，其他错误: ${error.message}`);
       errorMessage += `: ${error.message}`;
     }
-    
+
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }
