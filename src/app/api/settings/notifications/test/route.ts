@@ -16,6 +16,10 @@ interface EmailConfig {
 
 interface WebhookConfig {
   url: string;
+  method?: string; // HTTP方法，默认POST
+  headers?: Record<string, string>; // 自定义请求头
+  bodyTemplate?: string; // 请求体模板，支持变量占位符
+  contentType?: string; // Content-Type，默认application/json
 }
 
 interface WechatConfig {
@@ -131,7 +135,7 @@ async function testEmailNotification(name: string, config: EmailConfig) {
 
 // 测试Webhook通知
 async function testWebhookNotification(name: string, config: WebhookConfig) {
-  const { url } = config;
+  const { url, method = 'POST', headers, bodyTemplate, contentType = 'application/json' } = config;
   
   if (!url) {
     return NextResponse.json(
@@ -139,34 +143,89 @@ async function testWebhookNotification(name: string, config: WebhookConfig) {
       { status: 400 }
     );
   }
-  
+
   try {
-    console.log(`开始测试Webhook通知: ${name}, URL: ${url}`);
+    console.log(`开始测试Webhook通知: ${name}, URL: ${url}, Method=${method}, ContentType=${contentType}, 自定义模板=${!!bodyTemplate}, 自定义请求头=${!!headers}`);
     
-    // 准备测试数据 - 使用与实际通知一致的格式
+    // 准备测试用的通知数据，用于模板变量替换
+    const testData = {
+      monitorName: '测试监控项',
+      monitorType: 'http',
+      status: '正常',
+      statusText: '正常',
+      statusCode: 1,
+      time: formatDateTime(),
+      message: '这是一条来自酷监控的测试通知'
+    };
+    
+    // 准备默认的webhook数据 - 使用与实际通知一致的格式
     const webhookData = {
       event: 'status_change',
       timestamp: new Date().toISOString(),
       monitor: {
-        name: '测试监控项',
-        type: 'http',
-        status: '正常',  // 中文状态描述
-        status_code: 1,  // 状态码: 1=正常
-        time: formatDateTime(),
-        message: '这是一条来自酷监控的测试通知'
+        name: testData.monitorName,
+        type: testData.monitorType,
+        status: testData.statusText,  // 中文状态描述
+        status_code: testData.statusCode,  // 状态码: 1=正常
+        time: testData.time,
+        message: testData.message,
+        address: null as string | null
       },
       // 添加失败信息结构，与实际通知保持一致
       failure_info: null
     };
     
-    console.log(`Webhook测试数据: ${JSON.stringify(webhookData)}`);
+    // 处理请求体
+    let requestBody: string | Record<string, unknown>;
+    if (bodyTemplate) {
+      // 使用自定义模板，替换变量
+      let body = bodyTemplate;
+      Object.entries(testData).forEach(([key, value]) => {
+        // 对变量值进行JSON转义，只转义真正的控制字符
+        const escapedValue = String(value)
+          .replace(/\\/g, '\\\\')  // 反斜杠
+          .replace(/"/g, '\\"')    // 双引号
+          .replace(/\n/g, '\\n')   // 换行符
+          .replace(/\r/g, '\\r')   // 回车符
+          .replace(/\t/g, '\\t');  // 制表符
+        
+        body = body.replace(new RegExp(`\\{${key}\\}`, 'g'), escapedValue);
+      });
+      
+      // 根据Content-Type处理请求体
+      if (contentType === 'application/json') {
+        try {
+          requestBody = JSON.parse(body);
+        } catch (error) {
+          console.error('自定义JSON模板解析失败，使用原始字符串:', error);
+          console.error('原始模板:', body);
+          requestBody = body;
+        }
+      } else {
+        requestBody = body;
+      }
+    } else {
+      // 使用默认数据结构
+      requestBody = webhookData;
+    }
+    
+    console.log(`Webhook测试数据: ${JSON.stringify(requestBody)}`);
+    
+    // 根据Content-Type设置请求头
+    const requestHeaders: Record<string, string> = {
+      'Content-Type': contentType,
+      'User-Agent': 'CoolMonitor-Notification-Service'
+    };
+    if (headers) {
+      Object.assign(requestHeaders, headers);
+    }
     
     // 发送Webhook请求
-    const response = await axios.post(url, webhookData, {
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'CoolMonitor-Notification-Service'
-      },
+    const response = await axios({
+      method: method,
+      url: url,
+      data: requestBody,
+      headers: requestHeaders,
       timeout: 10000 // 10秒超时
     });
     
