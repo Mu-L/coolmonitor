@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MonitorForm } from "./monitors/monitor-form";
 import { MonitorDetail } from "./monitors/monitor-detail";
+import { ImportDialog } from "./monitors/components/import-dialog";
 import { Header } from "@/components/header";
 
 // 监控状态类型
@@ -54,6 +55,7 @@ function Sidebar({ setSelectedMonitor, activeMonitorId }: { setSelectedMonitor: 
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isMonitorFormOpen, setIsMonitorFormOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [activeItems, setActiveItems] = useState<string[]>([]);
   const [monitors, setMonitors] = useState<MonitorItemData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -366,11 +368,18 @@ function Sidebar({ setSelectedMonitor, activeMonitorId }: { setSelectedMonitor: 
           }}
         >酷监控</div>
         <button 
-          className="bg-gradient-to-r from-primary to-secondary text-white px-6 py-2.5 rounded-button hover:opacity-90 transition-opacity flex items-center space-x-2 w-full mb-5 justify-center"
+          className="bg-gradient-to-r from-primary to-secondary text-white px-6 py-2.5 rounded-button hover:opacity-90 transition-opacity flex items-center space-x-2 w-full mb-3 justify-center"
           onClick={() => setIsMonitorFormOpen(true)}
         >
           <i className="fas fa-plus"></i>
           <span>添加监控项</span>
+        </button>
+        <button 
+          className="border border-primary/30 text-foreground px-4 py-2.5 rounded-button hover:bg-primary/5 transition-opacity flex items-center justify-center space-x-2 w-full mb-5"
+          onClick={() => setIsImportDialogOpen(true)}
+        >
+          <i className="fas fa-file-import"></i>
+          <span>导入监控项</span>
         </button>
         <div className="relative mb-5">
           <input 
@@ -472,6 +481,19 @@ function Sidebar({ setSelectedMonitor, activeMonitorId }: { setSelectedMonitor: 
             .then(data => setMonitors(data))
             .catch(err => console.error("刷新监控项失败", err));
         }} 
+      />
+      
+      {/* 导入对话框 */}
+      <ImportDialog
+        isOpen={isImportDialogOpen}
+        onClose={() => setIsImportDialogOpen(false)}
+        onSuccess={() => {
+          // 导入成功后刷新监控项列表
+          fetch('/api/monitors')
+            .then(res => res.json())
+            .then(data => setMonitors(data))
+            .catch(err => console.error("刷新监控项失败", err));
+        }}
       />
     </nav>
   );
