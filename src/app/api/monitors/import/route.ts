@@ -57,6 +57,9 @@ export async function POST(request: NextRequest) {
       errors: [] as Array<{ row: number; error: string }>
     };
 
+    // 记录本次导入成功创建的监控 ID，方便导入完成后统一调度
+    const createdMonitorIds: string[] = [];
+
     // 获取所有分组，用于匹配分组名称
     const groups = await prisma.monitorGroup.findMany({
       where: { createdById: session.user.id }
@@ -220,15 +223,8 @@ export async function POST(request: NextRequest) {
         // 创建监控项
         const monitor = await monitorOperations.createMonitor(monitorData);
 
-        // 异步调度监控项
-        setImmediate(async () => {
-          try {
-            const { scheduleMonitor } = await import('@/lib/monitors/scheduler');
-            await scheduleMonitor(monitor.id);
-          } catch (error) {
-            console.error('启动导入的监控失败:', error);
-          }
-        });
+        // 记录创建成功的监控 ID，导入结束后统一调度
+        createdMonitorIds.push(monitor.id);
 
         results.success++;
       } catch (error) {
@@ -239,6 +235,26 @@ export async function POST(request: NextRequest) {
         });
         results.failed++;
       }
+    }
+
+    // 导入全部处理完后，再异步统一触发调度，避免在循环中频繁调度导致导入过程变慢
+    if (createdMonitorIds.length > 0) {
+      setImmediate(async () => {
+        try {
+          const { scheduleMonitor } = await import('@/lib/monitors/scheduler');
+
+          // 顺序调度新创建的监控项，避免一次性并发过高
+          for (const id of createdMonitorIds) {
+            try {
+              await scheduleMonitor(id);
+            } catch (error) {
+              console.error(`调度导入的监控失败: ${id}`, error);
+            }
+          }
+        } catch (error) {
+          console.error('批量调度导入的监控失败:', error);
+        }
+      });
     }
 
     return NextResponse.json({

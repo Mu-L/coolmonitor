@@ -12,8 +12,11 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // suppressHydrationWarning 说明：
+  // - 允许我们在客户端通过脚本/ThemeProvider 动态切换 <html> 上的 class（dark/light），
+  // - 避免因服务端与客户端首帧 class 不一致而触发 Hydration 警告。
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
       <head>
         <Script id="theme-init" strategy="beforeInteractive">
           {`(function(){
