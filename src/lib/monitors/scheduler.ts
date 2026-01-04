@@ -6,6 +6,44 @@ import { sendStatusChangeNotifications } from './notification-service';
 
 import { generateCompactMessage } from '../utils/compact-message';
 
+// 并发控制配置
+const MAX_CONCURRENT_CHECKS = 10; // 最大并发检查数
+const CHECK_QUEUE_DELAY = 100; // 队列检查间隔(ms)
+
+// 执行队列和计数器
+const activeChecks = new Set<string>();
+const pendingChecks = new Map<string, boolean>();
+
+// 限制并发执行检查
+async function executeWithConcurrencyLimit(monitorId: string, checkFn: () => Promise<void>) {
+  // 如果已经在执行或等待中，跳过
+  if (activeChecks.has(monitorId) || pendingChecks.has(monitorId)) {
+    console.log(`监控项 ${monitorId} 正在执行或等待中，跳过本次检查`);
+    return;
+  }
+
+  // 加入等待队列
+  pendingChecks.set(monitorId, true);
+
+  // 等待直到可以执行
+  while (activeChecks.size >= MAX_CONCURRENT_CHECKS) {
+    await new Promise(resolve => setTimeout(resolve, CHECK_QUEUE_DELAY));
+  }
+
+  // 从等待队列移除
+  pendingChecks.delete(monitorId);
+
+  // 标记为执行中
+  activeChecks.add(monitorId);
+
+  try {
+    await checkFn();
+  } finally {
+    // 无论成功或失败，都从执行中集合移除
+    activeChecks.delete(monitorId);
+  }
+}
+
 // 定义监控项数据类型
 interface MonitorData {
   id: string;
@@ -23,8 +61,17 @@ interface MonitorData {
 // 存储所有监控计划的映射
 const monitorJobs = new Map<string, Cron>();
 
+// 用于防止 scheduleMonitor 同一监控项并发执行
+const activeScheduleCalls = new Map<string, Promise<boolean>>();
+
 // 添加或更新监控计划
 export async function scheduleMonitor(monitorId: string) {
+  // 防止同一监控项的 scheduleMonitor 并发执行
+  if (activeScheduleCalls.has(monitorId)) {
+    console.log(`监控项 ${monitorId} 正在调度中，跳过本次调度请求`);
+    return activeScheduleCalls.get(monitorId);
+  }
+
   try {
     // 先取消之前的计划（如果存在）
     if (monitorJobs.has(monitorId)) {
@@ -52,13 +99,15 @@ export async function scheduleMonitor(monitorId: string) {
 
     // 计算下次检查时间
     const nextCheckAt = new Date(Date.now() + monitorData.interval * 1000);
-    
-    // 更新监控项的下次检查时间
-    await prisma.$executeRaw`
-      UPDATE "Monitor" 
-      SET "nextCheckAt" = ${nextCheckAt} 
-      WHERE id = ${monitorId}
-    `;
+
+    // 将数据库更新操作也通过队列控制，避免与正在执行的检查产生锁竞争
+    await executeWithConcurrencyLimit(`${monitorId}-schedule`, async () => {
+      await prisma.$executeRaw`
+        UPDATE "Monitor"
+        SET "nextCheckAt" = ${nextCheckAt}
+        WHERE id = ${monitorId}
+      `;
+    });
 
     // 使用Croner创建新的计划任务
     let job;
@@ -68,13 +117,15 @@ export async function scheduleMonitor(monitorId: string) {
         name: `monitor-${monitorId}`,
         protect: true // 防止任务重叠执行
       }, async () => {
-        try {
-          await executeMonitorCheck(monitorId);
-        } catch (error) {
-          console.error(`监控检查异常 ${monitorId}:`, error);
-          // 记录监控失败状态
-          await recordMonitorStatus(monitorId, MONITOR_STATUS.DOWN, '监控任务执行异常', null, monitorData.lastStatus || null);
-        }
+        await executeWithConcurrencyLimit(monitorId, async () => {
+          try {
+            await executeMonitorCheck(monitorId);
+          } catch (error) {
+            console.error(`监控检查异常 ${monitorId}:`, error);
+            // 记录监控失败状态
+            await recordMonitorStatus(monitorId, MONITOR_STATUS.DOWN, '监控任务执行异常', null, monitorData.lastStatus || null);
+          }
+        });
       });
     } else if (monitorData.interval <= 3600) {
       // 如果间隔大于60秒但小于等于3600秒(1小时)，使用分钟级cron表达式
@@ -83,13 +134,15 @@ export async function scheduleMonitor(monitorId: string) {
         name: `monitor-${monitorId}`,
         protect: true // 防止任务重叠执行
       }, async () => {
-        try {
-          await executeMonitorCheck(monitorId);
-        } catch (error) {
-          console.error(`监控检查异常 ${monitorId}:`, error);
-          // 记录监控失败状态
-          await recordMonitorStatus(monitorId, MONITOR_STATUS.DOWN, '监控任务执行异常', null, monitorData.lastStatus || null);
-        }
+        await executeWithConcurrencyLimit(monitorId, async () => {
+          try {
+            await executeMonitorCheck(monitorId);
+          } catch (error) {
+            console.error(`监控检查异常 ${monitorId}:`, error);
+            // 记录监控失败状态
+            await recordMonitorStatus(monitorId, MONITOR_STATUS.DOWN, '监控任务执行异常', null, monitorData.lastStatus || null);
+          }
+        });
       });
     } else {
       // 如果间隔大于3600秒(1小时)
@@ -99,30 +152,36 @@ export async function scheduleMonitor(monitorId: string) {
       const intervalHours = totalHours % HOURS_IN_DAY || HOURS_IN_DAY; // 如果能被24整除，则使用24
       // 生成一个0-59之间的随机数作为分钟数，避免整点负载集中
       const randomMinute = Math.floor(Math.random() * 60);
-      
+
       job = new Cron(`0 ${randomMinute} */${intervalHours} * * *`, {
         name: `monitor-${monitorId}`,
         protect: true // 防止任务重叠执行
       }, async () => {
-        try {
-          await executeMonitorCheck(monitorId);
-        } catch (error) {
-          console.error(`监控检查异常 ${monitorId}:`, error);
-          // 记录监控失败状态
-          await recordMonitorStatus(monitorId, MONITOR_STATUS.DOWN, '监控任务执行异常', null, monitorData.lastStatus || null);
-        }
+        await executeWithConcurrencyLimit(monitorId, async () => {
+          try {
+            await executeMonitorCheck(monitorId);
+          } catch (error) {
+            console.error(`监控检查异常 ${monitorId}:`, error);
+            // 记录监控失败状态
+            await recordMonitorStatus(monitorId, MONITOR_STATUS.DOWN, '监控任务执行异常', null, monitorData.lastStatus || null);
+          }
+        });
       });
     }
 
     // 存储计划任务实例
     monitorJobs.set(monitorId, job);
-    
-    // 立即执行一次监控检查
-    try {
-      await executeMonitorCheck(monitorId);
-    } catch (error) {
-      console.error(`初始监控检查异常 ${monitorId}:`, error);
-    }
+
+    // 首次检查也通过队列执行，避免阻塞调用方
+    setImmediate(() => {
+      executeWithConcurrencyLimit(monitorId, async () => {
+        try {
+          await executeMonitorCheck(monitorId);
+        } catch (error) {
+          console.error(`初始监控检查异常 ${monitorId}:`, error);
+        }
+      });
+    });
 
     return true;
   } catch (error) {
@@ -145,7 +204,7 @@ export function stopMonitor(monitorId: string): boolean {
 export async function resetAllMonitors() {
   try {
     console.log('开始重置所有监控计划...');
-    
+
     // 停止所有现有的监控计划
     for (const job of monitorJobs.values()) {
       job.stop();
@@ -157,15 +216,30 @@ export async function resetAllMonitors() {
     const activeMonitors = await prisma.$queryRaw`
       SELECT * FROM "Monitor" WHERE active = true
     `;
-    console.log(`找到 ${Array.isArray(activeMonitors) ? activeMonitors.length : 0} 个激活的监控项`);
+    const monitors = Array.isArray(activeMonitors) ? activeMonitors as MonitorData[] : [];
+    console.log(`找到 ${monitors.length} 个激活的监控项`);
 
-    // 重新调度每个激活的监控项
-    for (const monitor of activeMonitors as MonitorData[]) {
-      await scheduleMonitor(monitor.id);
+    // 分批次重新调度监控项，避免一次性启动大量任务导致数据库锁竞争
+    const BATCH_SIZE = 5; // 每批调度5个
+    const BATCH_DELAY = 1000; // 每批之间延迟1秒
+
+    for (let i = 0; i < monitors.length; i += BATCH_SIZE) {
+      const batch = monitors.slice(i, i + BATCH_SIZE);
+      console.log(`调度第 ${Math.floor(i / BATCH_SIZE) + 1} 批监控项（${batch.length}个）...`);
+
+      // 并行调度当前批次
+      await Promise.allSettled(
+        batch.map(monitor => scheduleMonitor(monitor.id))
+      );
+
+      // 如果不是最后一批，等待一段时间再继续
+      if (i + BATCH_SIZE < monitors.length) {
+        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
+      }
     }
-    console.log('所有监控项已重新调度');
 
-    return Array.isArray(activeMonitors) ? activeMonitors.length : 0;
+    console.log('所有监控项已重新调度');
+    return monitors.length;
   } catch (error) {
     console.error('重置监控计划失败:', error);
     return 0;
@@ -189,7 +263,6 @@ async function executeMonitorCheck(monitorId: string) {
   let status = MONITOR_STATUS.DOWN;
   let message = '';
   let ping: number | null = null;
-  let wasRetrySuccessful = false; // 标记是否为重试成功
 
   try {
     // 对于 Push 类型监控，特殊处理
@@ -339,10 +412,9 @@ async function executeMonitorCheck(monitorId: string) {
 
         // 如果检查成功，跳出重试循环
         if (checkResult && checkResult.status === MONITOR_STATUS.UP) {
-          // 如果是重试成功，更新消息并标记
+          // 如果是重试成功，更新消息
           if (attempt > 0) {
             checkResult.message = `重试成功 (${attempt}/${monitorData.retries || 0}): ${checkResult.message}`;
-            wasRetrySuccessful = true;
           }
           break;
         }
