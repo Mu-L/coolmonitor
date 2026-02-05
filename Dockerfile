@@ -58,6 +58,7 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma/template ./prisma/template
 COPY --from=builder /app/startup.sh ./startup.sh
+COPY --from=builder /app/scripts ./scripts
 
 # 确认Prisma客户端存在
 RUN echo "确认Prisma客户端目录存在..." && \
