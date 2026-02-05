@@ -48,6 +48,11 @@ RUN echo "检查standalone目录中的Prisma客户端..." && \
       echo "✓ Prisma客户端已正确包含在构建产物中"; \
     fi
 
+# 确保bcryptjs复制到standalone目录（密码重置脚本需要）
+RUN mkdir -p /app/.next/standalone/node_modules/bcryptjs && \
+    cp -r /app/node_modules/bcryptjs/* /app/.next/standalone/node_modules/bcryptjs/ && \
+    echo "✓ bcryptjs已复制到standalone目录"
+
 # 中间阶段 - 提取相关文件并删除不必要的依赖
 FROM node:20-alpine AS extractor
 

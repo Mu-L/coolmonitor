@@ -36,6 +36,11 @@ RUN mkdir -p /app/prisma/template && \
 # 构建应用
 RUN npm run build
 
+# 确保bcryptjs复制到standalone目录（密码重置脚本需要）
+RUN mkdir -p /app/.next/standalone/node_modules/bcryptjs && \
+    cp -r /app/node_modules/bcryptjs/* /app/.next/standalone/node_modules/bcryptjs/ && \
+    echo "✓ bcryptjs已复制到standalone目录"
+
 # 中间阶段 - 提取相关文件并删除不必要的依赖
 FROM --platform=linux/arm64 node:20-alpine AS extractor
 
