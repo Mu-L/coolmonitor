@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "reset-password": "tsx scripts/reset-password.ts"
+    "reset-password": "node scripts/reset-password.js"
   },
   "dependencies": {
     "@types/nodemailer": "^6.4.17",

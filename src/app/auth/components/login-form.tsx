@@ -148,18 +148,18 @@ export default function LoginForm() {
               <p className="text-purple-300 font-medium mb-2">📦 Docker 安装方式：</p>
               <p className="text-foreground mb-2 text-sm">在宿主机执行：</p>
               <div className="bg-dark-nav p-3 rounded-md border border-purple-600/20 text-xs font-mono mb-2">
-                <p className="text-green-400">docker exec -it coolmonitor npm run reset-password 用户名 "新密码123" </p>
+                <p className="text-green-400">docker exec -it coolmonitor node scripts/reset-password.js 用户名 "新密码123" </p>
               </div>
               <p className="text-foreground mb-1 text-sm">或进入 Docker 容器内执行：</p>
               <div className="bg-dark-nav p-3 rounded-md border border-purple-600/20 text-xs font-mono">
-                <p className="text-green-400">npm run reset-password 用户名 "新密码123"</p>
+                <p className="text-green-400">node scripts/reset-password.js 用户名 "新密码123"</p>
               </div>
             </div>
 
             <div className="mb-4">
               <p className="text-purple-300 font-medium mb-2">💻 npm 安装方式：</p>
               <div className="bg-dark-nav p-3 rounded-md border border-purple-600/20 text-xs font-mono">
-                <p className="text-green-400">npm run reset-password 用户名 "新密码123"</p>
+                <p className="text-green-400">node scripts/reset-password.js 用户名 "新密码123"</p>
               </div>
             </div>
 

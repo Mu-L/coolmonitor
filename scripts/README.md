@@ -6,19 +6,19 @@
 
 ```bash
 # 自动生成随机密码
-npm run reset-password admin
+node scripts/reset-password.js admin
 
 # 指定新密码
-npm run reset-password admin "新密码123"
+node scripts/reset-password.js admin "新密码123"
 
 # 在 Docker 中使用
-docker exec -it coolmonitor npm run reset-password admin
+docker exec -it coolmonitor node scripts/reset-password.js admin
 ```
 
 ## 示例
 
 ```bash
-$ npm run reset-password admin
+$ node scripts/reset-password.js admin
 
 ✅ 密码重置成功!
 用户: admin
