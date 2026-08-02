@@ -2,6 +2,7 @@
 
 import { MonitorTypeSelector } from "./MonitorTypeSelector";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { generatePushToken } from "@/lib/monitors";
 import { MonitorConfig } from "@/lib/monitors";
 import toast from "react-hot-toast";
@@ -84,8 +85,8 @@ function CreateGroupDialog({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[200]">
       <div className="bg-card border border-primary/20 rounded-lg p-6 w-full max-w-md mx-4">
         <h3 className="text-lg font-medium mb-4 text-primary">{t('monitorGroups.newGroup')}</h3>
         <div className="space-y-4">
@@ -144,7 +145,8 @@ function CreateGroupDialog({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
