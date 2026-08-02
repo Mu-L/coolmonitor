@@ -7,9 +7,10 @@ import { MonitorForm } from "./monitors/monitor-form";
 import { MonitorDetail } from "./monitors/monitor-detail";
 import { ImportDialog } from "./monitors/components/import-dialog";
 import { Header } from "@/components/header";
+import { useI18n } from "@/context/I18nContext";
 
 // 监控状态类型
-type MonitorItemStatus = "正常" | "故障" | "维护" | "未知" | "暂停";
+type MonitorItemStatus = "up" | "down" | "pending" | "unknown" | "paused";
 
 // 监控项接口类型
 interface MonitorItemData {
@@ -31,13 +32,13 @@ interface MonitorItemData {
 
 // 监控项状态映射
 const statusMapping = (status?: number, active = true): MonitorItemStatus => {
-  if (!active) return "暂停";
+  if (!active) return "paused";
   
   switch(status) {
-    case 1: return "正常";
-    case 0: return "故障";
-    case 2: return "维护";
-    default: return "未知";
+    case 1: return "up";
+    case 0: return "down";
+    case 2: return "pending";
+    default: return "unknown";
   }
 };
 
@@ -52,6 +53,7 @@ const statusData = {
 
 // 侧边栏组件
 function Sidebar({ setSelectedMonitor, activeMonitorId }: { setSelectedMonitor: (id: string | null) => void, activeMonitorId: string | null }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isMonitorFormOpen, setIsMonitorFormOpen] = useState(false);
@@ -122,7 +124,7 @@ function Sidebar({ setSelectedMonitor, activeMonitorId }: { setSelectedMonitor: 
     // 按分组组织监控项
     const groupedMonitors = monitors.reduce((groups, item) => {
       const groupId = item.group?.id || 'ungrouped';
-      const groupName = item.group?.name || '未分组';
+      const groupName = item.group?.name || t('dashboard.ungrouped');
       const groupColor = item.group?.color || '#6366F1';
       
       if (!groups[groupId]) {
@@ -366,25 +368,25 @@ function Sidebar({ setSelectedMonitor, activeMonitorId }: { setSelectedMonitor: 
             setSelectedMonitor(null);
             setActiveItems([]);
           }}
-        >酷监控</div>
+        >{t('common.appName')}</div>
         <button 
           className="bg-gradient-to-r from-primary to-secondary text-white px-6 py-2.5 rounded-button hover:opacity-90 transition-opacity flex items-center space-x-2 w-full mb-3 justify-center"
           onClick={() => setIsMonitorFormOpen(true)}
         >
           <i className="fas fa-plus"></i>
-          <span>添加监控项</span>
+          <span>{t('dashboard.addMonitor')}</span>
         </button>
         <button 
           className="border border-primary/30 text-foreground px-4 py-2.5 rounded-button hover:bg-primary/5 transition-opacity flex items-center justify-center space-x-2 w-full mb-5"
           onClick={() => setIsImportDialogOpen(true)}
         >
           <i className="fas fa-file-import"></i>
-          <span>导入监控项</span>
+          <span>{t('dashboard.importMonitor')}</span>
         </button>
         <div className="relative mb-5">
           <input 
             type="text" 
-            placeholder="搜索监控项..." 
+            placeholder={t('dashboard.searchPlaceholder')} 
             className="search-input dark:bg-dark-card bg-light-card border border-primary/20 rounded-button px-4 py-2.5 w-full focus:outline-none text-foreground"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -392,7 +394,7 @@ function Sidebar({ setSelectedMonitor, activeMonitorId }: { setSelectedMonitor: 
           <i className="fas fa-search absolute right-4 top-1/2 -translate-y-1/2 text-foreground/50"></i>
         </div>
         <div className="px-4 mb-3">
-          <span className="text-sm text-foreground/50">监控列表</span>
+          <span className="text-sm text-foreground/50">{t('dashboard.monitorList')}</span>
         </div>
         <div 
           ref={scrollContainerRef}
@@ -401,11 +403,11 @@ function Sidebar({ setSelectedMonitor, activeMonitorId }: { setSelectedMonitor: 
           {loading ? (
             <div className="text-center py-4 text-foreground/60">
               <i className="fas fa-spinner fa-spin mr-2"></i>
-              加载中...
+              {t('common.loading')}
             </div>
           ) : displayData.length === 0 ? (
             <div className="text-center py-4 text-foreground/60">
-              未找到监控项
+              {t('dashboard.noMonitors')}
             </div>
           ) : (
                                       displayData.map((group, groupIndex) => (
@@ -509,39 +511,40 @@ type StatusData = {
 };
 
 function StatusCards({ data }: { data: StatusData }) {
+  const { t } = useI18n();
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-5 lg:gap-6 mb-8">
       <div className="dark:bg-dark-card bg-light-card p-6 rounded-lg hover-card border border-primary/10">
         <div className="flex justify-between items-center mb-4">
-          <span className="text-success font-medium">正常</span>
+          <span className="text-success font-medium">{t('dashboard.normal')}</span>
           <i className="fas fa-check-circle text-success text-xl"></i>
         </div>
         <div className="text-3xl font-bold">{data.normal}</div>
       </div>
       <div className="dark:bg-dark-card bg-light-card p-6 rounded-lg hover-card border border-primary/10">
         <div className="flex justify-between items-center mb-4">
-          <span className="text-error font-medium">故障</span>
+          <span className="text-error font-medium">{t('dashboard.error')}</span>
           <i className="fas fa-exclamation-circle text-error text-xl"></i>
         </div>
         <div className="text-3xl font-bold">{data.error}</div>
       </div>
       <div className="dark:bg-dark-card bg-light-card p-6 rounded-lg hover-card border border-primary/10">
         <div className="flex justify-between items-center mb-4">
-          <span className="text-primary font-medium">维护</span>
+          <span className="text-primary font-medium">{t('dashboard.maintenance')}</span>
           <i className="fas fa-wrench text-primary text-xl"></i>
         </div>
         <div className="text-3xl font-bold">{data.maintenance}</div>
       </div>
       <div className="dark:bg-dark-card bg-light-card p-6 rounded-lg hover-card border border-primary/10">
         <div className="flex justify-between items-center mb-4">
-          <span className="text-warning font-medium">未知</span>
+          <span className="text-warning font-medium">{t('status.unknown')}</span>
           <i className="fas fa-question-circle text-warning text-xl"></i>
         </div>
         <div className="text-3xl font-bold">{data.unknown}</div>
       </div>
       <div className="dark:bg-dark-card bg-light-card p-6 rounded-lg hover-card border border-primary/10">
         <div className="flex justify-between items-center mb-4">
-          <span className="text-foreground/50 font-medium">暂停</span>
+          <span className="text-foreground/50 font-medium">{t('dashboard.paused')}</span>
           <i className="fas fa-pause-circle text-foreground/50 text-xl"></i>
         </div>
         <div className="text-3xl font-bold">{data.paused}</div>
@@ -562,15 +565,15 @@ type MonitorItem = {
 // 获取监控项状态点样式 (全局函数，避免重复)
 const getStatusDotClass = (status: MonitorItemStatus) => {
   switch (status) {
-    case "正常":
+    case "up":
       return "bg-success";
-    case "故障":
+    case "down":
       return "bg-error";
-    case "维护":
+    case "pending":
       return "bg-primary";
-    case "未知":
+    case "unknown":
       return "bg-warning";
-    case "暂停":
+    case "paused":
       return "bg-foreground/50";
     default:
       return "bg-foreground/50";
@@ -578,24 +581,27 @@ const getStatusDotClass = (status: MonitorItemStatus) => {
 };
 
 function MonitorTable({ items, setSelectedMonitor }: { items: MonitorItem[], setSelectedMonitor: (id: string | null) => void }) {
+  const { t } = useI18n();
   const router = useRouter();
   
   const getStatusClass = (status: MonitorItemStatus) => {
     switch (status) {
-      case "正常":
+      case "up":
         return "bg-success/20 text-success";
-      case "故障":
+      case "down":
         return "bg-error/20 text-error";
-      case "维护":
+      case "pending":
         return "bg-primary/20 text-primary";
-      case "未知":
+      case "unknown":
         return "bg-warning/20 text-warning";
-      case "暂停":
+      case "paused":
         return "bg-foreground/20 text-foreground/50";
       default:
         return "bg-foreground/20 text-foreground/50";
     }
   };
+
+  const statusDisplay = (s: MonitorItemStatus) => t('status.' + s);
 
   const handleLinkClick = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -611,10 +617,10 @@ function MonitorTable({ items, setSelectedMonitor }: { items: MonitorItem[], set
         <table className="w-full border-collapse">
           <thead className="dark:bg-dark-nav bg-light-nav">
             <tr>
-              <th className="px-6 py-4 text-left text-sm font-medium text-foreground/80">名称</th>
-              <th className="px-6 py-4 text-left text-sm font-medium text-foreground/80">状态</th>
-              <th className="px-6 py-4 text-left text-sm font-medium text-foreground/80">日期时间</th>
-              <th className="px-6 py-4 text-left text-sm font-medium text-foreground/80">消息</th>
+              <th className="px-6 py-4 text-left text-sm font-medium text-foreground/80">{t('dashboard.name')}</th>
+              <th className="px-6 py-4 text-left text-sm font-medium text-foreground/80">{t('dashboard.status')}</th>
+              <th className="px-6 py-4 text-left text-sm font-medium text-foreground/80">{t('dashboard.datetime')}</th>
+              <th className="px-6 py-4 text-left text-sm font-medium text-foreground/80">{t('dashboard.message')}</th>
             </tr>
           </thead>
           <tbody>
@@ -637,7 +643,7 @@ function MonitorTable({ items, setSelectedMonitor }: { items: MonitorItem[], set
                 </td>
                 <td className="px-6 py-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusClass(item.status)}`}>
-                    {item.status}
+                    {statusDisplay(item.status)}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-sm text-foreground/70">{item.lastCheck}</td>
@@ -653,6 +659,7 @@ function MonitorTable({ items, setSelectedMonitor }: { items: MonitorItem[], set
 
 // 仪表盘概览组件
 function Dashboard({ setSelectedMonitor }: { setSelectedMonitor: (id: string | null) => void }) {
+  const { t } = useI18n();
   const [monitorItems, setMonitorItems] = useState<MonitorItem[]>([]);
   const [statusCounts, setStatusCounts] = useState<StatusData>(statusData);
   const [loading, setLoading] = useState(true);
@@ -670,8 +677,8 @@ function Dashboard({ setSelectedMonitor }: { setSelectedMonitor: (id: string | n
             id: item.id,
             name: item.name,
             status: statusMapping(item.lastStatus, item.active),
-            lastCheck: item.lastCheckAt ? new Date(item.lastCheckAt).toLocaleString() : '暂无检查',
-            message: item.lastStatus === 1 ? "200 - OK" : (item.lastStatus === 0 ? "连接失败" : "未知状态")
+            lastCheck: item.lastCheckAt ? new Date(item.lastCheckAt).toLocaleString() : t('status.noCheck'),
+            message: item.lastStatus === 1 ? "200 - OK" : (item.lastStatus === 0 ? t('status.connectionFailed') : t('status.unknownStatus'))
           }));
           
           setMonitorItems(formattedItems);
@@ -687,11 +694,11 @@ function Dashboard({ setSelectedMonitor }: { setSelectedMonitor: (id: string | n
           
           formattedItems.forEach((item: MonitorItem) => {
             switch(item.status) {
-              case "正常": counts.normal++; break;
-              case "故障": counts.error++; break;
-              case "维护": counts.maintenance++; break;
-              case "未知": counts.unknown++; break;
-              case "暂停": counts.paused++; break;
+              case "up": counts.normal++; break;
+              case "down": counts.error++; break;
+              case "pending": counts.maintenance++; break;
+              case "unknown": counts.unknown++; break;
+              case "paused": counts.paused++; break;
             }
           });
           
@@ -705,14 +712,14 @@ function Dashboard({ setSelectedMonitor }: { setSelectedMonitor: (id: string | n
     };
     
     fetchMonitors();
-  }, []);
+  }, [t]);
   
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-primary">
           <i className="fas fa-spinner fa-spin mr-2"></i>
-          加载监控数据中...
+          {t('dashboard.loadingMonitors')}
         </div>
       </div>
     );
@@ -799,6 +806,7 @@ interface MonitorDetailData {
 }
 
 export default function DashboardPage() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const monitorId = searchParams ? searchParams.get('id') : null;
   
@@ -837,7 +845,7 @@ export default function DashboardPage() {
             name: data.name,
             type: data.type,
             status: statusMapping(data.lastStatus, data.active),
-            message: data.lastStatus === 1 ? "200 - OK" : (data.lastStatus === 0 ? "连接失败" : "未知状态"),
+            message: data.lastStatus === 1 ? "200 - OK" : (data.lastStatus === 0 ? t('status.connectionFailed') : t('status.unknownStatus')),
             responseTime: data.statusHistory && data.statusHistory[0]?.ping ? `${data.statusHistory[0].ping}ms` : "N/A",
             uptime: uptime, // 使用计算的在线时间
             availability: availability // 使用计算的可用性
@@ -865,7 +873,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-center h-64">
               <div className="text-primary">
                 <i className="fas fa-spinner fa-spin mr-2"></i>
-                加载监控详情中...
+                {t('dashboard.loadingDetail')}
               </div>
             </div>
           ) : monitorData && (

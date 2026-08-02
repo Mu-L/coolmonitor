@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import axios from 'axios';
 import crypto from 'crypto';
+import { getServerSession } from 'next-auth';
 import { formatDateTime } from '@/lib/monitors/utils';
 import { sendWebhookNotification } from '@/lib/monitors/notification-service';
 import { validateAuth } from '@/lib/auth-helpers';
+import { buildAuthOptions } from '@/app/api/auth/[...nextauth]/route';
+import { prisma } from '@/lib/prisma';
+import type { Locale } from '@/lib/i18n';
 
 // 定义不同类型通知的配置接口
 interface EmailConfig {
@@ -36,6 +40,22 @@ interface DingTalkConfig {
 
 interface WorkWechatConfig {
   webhookUrl: string;
+}
+
+// 读取当前登录用户的偏好语言，用于通知内容本地化
+async function getCurrentUserLocale(): Promise<Locale> {
+  try {
+    const authOptions = await buildAuthOptions();
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) return 'zh';
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { preferredLanguage: true },
+    });
+    return user?.preferredLanguage === 'en' ? 'en' : 'zh';
+  } catch {
+    return 'zh';
+  }
 }
 
 // 测试通知接口
@@ -161,7 +181,8 @@ async function testWebhookNotification(name: string, config: WebhookConfig) {
     console.log(`Webhook测试配置: ${JSON.stringify(config)}`);
 
     // 直接复用正式的 Webhook 发送逻辑
-    const response = await sendWebhookNotification(config, testData);
+    const locale = await getCurrentUserLocale();
+    const response = await sendWebhookNotification(config, testData, locale);
 
     console.log(`Webhook测试响应: 状态码=${response.status}, 数据=${JSON.stringify(response.data)}`);
 

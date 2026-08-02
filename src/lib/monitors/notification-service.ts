@@ -3,13 +3,19 @@ import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import { prisma } from '@/lib/db';
 import { formatDateTime } from './utils';
+import { getServerTranslator, type Locale } from '@/lib/i18n';
 
-// 状态中文描述
-const STATUS_TEXT_CN: Record<number, string> = {
-  0: '异常',
-  1: '正常',
-  2: '等待'
-};
+// 通知语言：默认中文，可根据用户偏好动态确定
+type NotifyLocale = Locale;
+
+// 状态描述（根据语言返回）
+function getStatusText(status: number, locale: NotifyLocale): string {
+  const t = getServerTranslator(locale);
+  if (status === 0) return t('notification.statusDown');
+  if (status === 1) return t('notification.statusUp');
+  if (status === 2) return t('notification.statusPending');
+  return t('common.unknown');
+}
 
 // 通知数据接口
 interface NotificationData {
@@ -84,28 +90,31 @@ interface NotificationBindingWithChannel {
 function buildNotificationData(
   monitor: { name: string; type: string; config: unknown },
   status: number,
-  message: string
+  message: string,
+  locale: NotifyLocale
 ): NotificationData {
+  const t = getServerTranslator(locale);
+  const addrLabel = t('notification.monitorAddress');
   const notificationData: NotificationData = {
     monitorName: monitor.name,
     monitorType: monitor.type,
-    status: STATUS_TEXT_CN[status] || '未知',
-    statusText: STATUS_TEXT_CN[status] || '未知',
+    status: getStatusText(status, locale),
+    statusText: getStatusText(status, locale),
     statusCode: status,
     time: formatDateTime(),
-    message: message || '无详细信息'
+    message: message || t('notification.noDetail')
   };
 
   if (monitor.config) {
     try {
       const monitorConfig = monitor.config as Record<string, unknown>;
       if (monitorConfig.url) {
-        notificationData.message = `监控地址: ${String(monitorConfig.url)}\n${notificationData.message}`;
+        notificationData.message = `${addrLabel}: ${String(monitorConfig.url)}\n${notificationData.message}`;
       } else if (monitorConfig.hostname) {
         const address = monitorConfig.port
           ? `${String(monitorConfig.hostname)}:${String(monitorConfig.port)}`
           : String(monitorConfig.hostname);
-        notificationData.message = `监控地址: ${address}\n${notificationData.message}`;
+        notificationData.message = `${addrLabel}: ${address}\n${notificationData.message}`;
       }
     } catch (error) {
       console.error("处理监控配置信息出错:", error);
@@ -121,7 +130,8 @@ function buildNotificationData(
  */
 async function notifyChannels(
   bindings: NotificationBindingWithChannel[] | null | undefined,
-  data: NotificationData
+  data: NotificationData,
+  locale: NotifyLocale
 ): Promise<boolean> {
   if (!bindings || bindings.length === 0) {
     return false;
@@ -134,7 +144,7 @@ async function notifyChannels(
 
     try {
       const config = (channel.config as Record<string, unknown>) || {};
-      await sendNotification(channel.type, config, data);
+      await sendNotification(channel.type, config, data, locale);
       anySuccess = true;
     } catch (error) {
       console.error(`向 ${channel.name}(${channel.type}) 发送通知失败:`, error);
@@ -164,6 +174,9 @@ export async function sendStatusChangeNotifications(
     const monitor = await prisma.monitor.findUnique({
       where: { id: monitorId },
       include: {
+        createdBy: {
+          select: { preferredLanguage: true }
+        },
         notificationBindings: {
           where: { enabled: true },
           include: {
@@ -186,6 +199,10 @@ export async function sendStatusChangeNotifications(
     if (!monitor.notificationBindings || monitor.notificationBindings.length === 0) {
       return;
     }
+
+    // 根据监控项创建者的偏好语言确定通知语言
+    const locale: NotifyLocale = monitor.createdBy?.preferredLanguage === 'en' ? 'en' : 'zh';
+    const t = getServerTranslator(locale);
 
     // 检查是否为新添加的监控项（状态历史记录数量小于等于1）
     const isNewMonitor = !monitor.statusHistory || monitor.statusHistory.length <= 1;
@@ -214,12 +231,12 @@ export async function sendStatusChangeNotifications(
     }
 
     // 准备基础通知数据（含监控地址信息）
-    const notificationData = buildNotificationData(monitor, status, message);
+    const notificationData = buildNotificationData(monitor, status, message, locale);
 
     // 独立通知（如证书到期提醒）：不参与上下线状态机的去重，也不读写送达缓存，
     // 避免污染监控项正常的故障 / 恢复通知流程。
     if (options?.standalone) {
-      await notifyChannels(monitor.notificationBindings, notificationData);
+      await notifyChannels(monitor.notificationBindings, notificationData, locale);
       return;
     }
 
@@ -302,15 +319,15 @@ export async function sendStatusChangeNotifications(
       const aggregatedData = {
         ...notificationData,
         failureCount: totalFailures,
-        firstFailureTime: firstContinuousFailure ? formatDateTime(firstContinuousFailure.timestamp) : '未知',
+        firstFailureTime: firstContinuousFailure ? formatDateTime(firstContinuousFailure.timestamp) : t('common.unknown'),
         lastFailureTime: formatDateTime(),
         failureDuration: duration,
-        message: `连续失败 ${totalFailures} 次，首次失败于 ${firstContinuousFailure ? formatDateTime(firstContinuousFailure.timestamp) : '未知'}，持续 ${duration} 分钟\n${notificationData.message}`
+        message: `${t('notification.failureSummary', { count: totalFailures, firstTime: firstContinuousFailure ? formatDateTime(firstContinuousFailure.timestamp) : t('common.unknown'), duration: String(duration) })}\n${notificationData.message}`
       };
 
       // 仅当至少一个渠道发送成功时，才把缓存更新为“已送达故障”。
       // 发送失败则缓存保持不变，下一轮检查会自动重试，确保故障告警不丢失。
-      if (await notifyChannels(monitor.notificationBindings, aggregatedData)) {
+      if (await notifyChannels(monitor.notificationBindings, aggregatedData, locale)) {
         notificationCache.set(monitorId, { time: now, status: 0 });
       }
     } else if (status === 1) {
@@ -331,16 +348,16 @@ export async function sendStatusChangeNotifications(
       // 增强恢复通知内容
       const recoveryData = {
         ...notificationData,
-        message: `监控已恢复正常。${recoverDuration > 0 ? `故障持续了约 ${recoverDuration} 分钟。` : ''}\n${notificationData.message}`
+        message: `${t('notification.recoveryMessage', { duration: recoverDuration > 0 ? t('notification.failureDurationMsg', { duration: String(recoverDuration) }) : '' })}\n${notificationData.message}`
       };
 
       // 仅当发送成功时才更新缓存为“已送达恢复”，失败则下轮重试
-      if (await notifyChannels(monitor.notificationBindings, recoveryData)) {
+      if (await notifyChannels(monitor.notificationBindings, recoveryData, locale)) {
         notificationCache.set(monitorId, { time: now, status: 1 });
       }
     } else {
       // —— 其他状态（如 PENDING）——
-      if (await notifyChannels(monitor.notificationBindings, notificationData)) {
+      if (await notifyChannels(monitor.notificationBindings, notificationData, locale)) {
         notificationCache.set(monitorId, { time: now, status });
       }
     }
@@ -355,7 +372,8 @@ export async function sendStatusChangeNotifications(
 async function sendNotification(
   type: string,
   config: Record<string, unknown>,
-  data: NotificationData
+  data: NotificationData,
+  locale: NotifyLocale
 ) {
   switch (type) {
     case '邮件':
@@ -367,7 +385,7 @@ async function sendNotification(
         username: config.username as string,
         password: config.password as string
       };
-      return await sendEmailNotification(emailConfig, data);
+      return await sendEmailNotification(emailConfig, data, locale);
     case 'Webhook':
       // 转换并验证配置
       const webhookConfig: WebhookConfig = {
@@ -377,7 +395,7 @@ async function sendNotification(
         bodyTemplate: config.bodyTemplate as string,
         contentType: config.contentType as string
       };
-      return await sendWebhookNotification(webhookConfig, data);
+      return await sendWebhookNotification(webhookConfig, data, locale);
     case '微信推送':
       // 转换并验证配置
       const wechatConfig: WechatConfig = {
@@ -385,20 +403,20 @@ async function sendNotification(
         titleTemplate: config.titleTemplate as string,
         contentTemplate: config.contentTemplate as string
       };
-      return await sendWechatNotification(wechatConfig, data);
+      return await sendWechatNotification(wechatConfig, data, locale);
     case '钉钉推送':
       // 转换并验证配置
       const dingtalkConfig: DingTalkConfig = {
         webhookUrl: String(config.webhookUrl || ''),
         secret: config.secret as string
       };
-      return await sendDingTalkNotification(dingtalkConfig, data);
+      return await sendDingTalkNotification(dingtalkConfig, data, locale);
     case '企业微信推送':
       // 转换并验证配置
       const workWechatConfig: WorkWechatConfig = {
         webhookUrl: String(config.webhookUrl || '')
       };
-      return await sendWorkWechatNotification(workWechatConfig, data);
+      return await sendWorkWechatNotification(workWechatConfig, data, locale);
     default:
       throw new Error(`不支持的通知类型: ${type}`);
   }
@@ -409,14 +427,16 @@ async function sendNotification(
  */
 async function sendEmailNotification(
   config: EmailConfig,
-  data: NotificationData
+  data: NotificationData,
+  locale: NotifyLocale
 ) {
   const { email, smtpServer, smtpPort, username, password } = config;
-  
+  const t = getServerTranslator(locale);
+
   if (!email || !smtpServer || !smtpPort) {
     throw new Error('邮件配置不完整');
   }
-  
+
   // 创建传输器
   const transporter = nodemailer.createTransport({
     host: smtpServer,
@@ -427,28 +447,28 @@ async function sendEmailNotification(
       pass: password
     }
   });
-  
+
   // 构建邮件内容
-  const subject = `酷监控 - ${data.monitorName} 状态${data.statusText}`;
+  const subject = t('notification.emailSubject', { name: data.monitorName, status: data.statusText });
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #6366F1; border-radius: 10px;">
-      <h2 style="color: #6366F1;">🔔 监控状态变更通知</h2>
-      <div style="background-color: ${data.status === 'UP' ? '#10B981' : '#EF4444'}1a; padding: 15px; border-radius: 8px; margin: 15px 0;">
-        <p style="margin: 0; color: ${data.status === 'UP' ? '#10B981' : '#EF4444'}; font-weight: bold; font-size: 16px;">
-          状态: ${data.statusText}
+      <h2 style="color: #6366F1;">🔔 ${t('notification.emailTitle')}</h2>
+      <div style="background-color: ${data.statusCode === 1 ? '#10B981' : '#EF4444'}1a; padding: 15px; border-radius: 8px; margin: 15px 0;">
+        <p style="margin: 0; color: ${data.statusCode === 1 ? '#10B981' : '#EF4444'}; font-weight: bold; font-size: 16px;">
+          ${t('notification.emailStatus')}: ${data.statusText}
         </p>
       </div>
       <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
         <tr>
-          <td style="padding: 8px 0; border-bottom: 1px solid #eee; color: #666;">监控名称</td>
+          <td style="padding: 8px 0; border-bottom: 1px solid #eee; color: #666;">${t('notification.emailMonitorName')}</td>
           <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-weight: bold;">${data.monitorName}</td>
         </tr>
         <tr>
-          <td style="padding: 8px 0; border-bottom: 1px solid #eee; color: #666;">监控类型</td>
+          <td style="padding: 8px 0; border-bottom: 1px solid #eee; color: #666;">${t('notification.emailMonitorType')}</td>
           <td style="padding: 8px 0; border-bottom: 1px solid #eee;">${data.monitorType}</td>
         </tr>
         <tr>
-          <td style="padding: 8px 0; border-bottom: 1px solid #eee; color: #666;">变更时间</td>
+          <td style="padding: 8px 0; border-bottom: 1px solid #eee; color: #666;">${t('notification.emailChangeTime')}</td>
           <td style="padding: 8px 0; border-bottom: 1px solid #eee;">${data.time}</td>
         </tr>
       </table>
@@ -456,10 +476,10 @@ async function sendEmailNotification(
         <p style="margin: 0; white-space: pre-line;">${data.message}</p>
       </div>
       <hr style="border-top: 1px solid #EEE; margin: 20px 0;">
-      <p style="color: #666; font-size: 12px;">此邮件由系统自动发送，请勿回复。</p>
+      <p style="color: #666; font-size: 12px;">${t('notification.emailFooter')}</p>
     </div>
   `;
-  
+
   // 发送邮件
   await transporter.sendMail({
     from: username || email,
@@ -474,10 +494,13 @@ async function sendEmailNotification(
  */
 export async function sendWebhookNotification(
   config: WebhookConfig,
-  data: NotificationData
+  data: NotificationData,
+  locale: NotifyLocale
 ) {
   const { url, method = 'POST', headers, bodyTemplate, contentType = 'application/json' } = config;
-  
+  const t = getServerTranslator(locale);
+  const addrLabel = t('notification.monitorAddress');
+
   if (!url) {
     throw new Error('Webhook URL不能为空');
   }
@@ -492,7 +515,7 @@ export async function sendWebhookNotification(
     monitor: {
       name: data.monitorName,
       type: data.monitorType,
-      status: data.statusText,  // 中文状态描述
+      status: data.statusText,  // 状态描述（根据语言）
       status_code: data.statusCode, // 使用数字状态码
       time: data.time,
       message: data.message,
@@ -506,9 +529,9 @@ export async function sendWebhookNotification(
       duration_minutes: data.failureDuration
     } : null
   };
-  
+
   // 从消息中提取监控地址信息并添加到webhook数据中
-  const addressMatch = data.message.match(/监控地址: (.*?)(?:\n|$)/);
+  const addressMatch = data.message.match(new RegExp(`${addrLabel}:\\s*(.*?)(?:\\n|$)`));
   if (addressMatch && addressMatch[1]) {
     webhookData.monitor.address = addressMatch[1];
   }
@@ -602,39 +625,41 @@ export async function sendWebhookNotification(
  */
 async function sendWechatNotification(
   config: WechatConfig,
-  data: NotificationData
+  data: NotificationData,
+  locale: NotifyLocale
 ) {
   const { pushUrl, titleTemplate, contentTemplate } = config;
-  
+  const t = getServerTranslator(locale);
+
   if (!pushUrl) {
     throw new Error('微信推送URL不能为空');
   }
-  
+
   // 替换模板中的变量
-  let title = titleTemplate || "酷监控 - {monitorName} 状态{statusText}";
-  let content = contentTemplate || 
-    "## 监控状态变更通知\n\n" +
-    "- **监控名称**: {monitorName}\n" +
-    "- **监控类型**: {monitorType}\n" +
-    "- **当前状态**: {statusText}\n" +
-    "- **变更时间**: {time}\n" +
-    (data.failureCount ? 
-      "- **连续失败次数**: {failureCount} 次\n" +
-      "- **首次失败时间**: {firstFailureTime}\n" +
-      "- **最后失败时间**: {lastFailureTime}\n" +
-      "- **失败持续时间**: {failureDuration} 分钟\n\n" : "\n") +
+  let title = titleTemplate || t('notification.emailSubject', { name: '{monitorName}', status: '{statusText}' });
+  let content = contentTemplate ||
+    `## ${t('notification.mdTitle')}\n\n` +
+    `- **${t('notification.mdMonitorName')}**: {monitorName}\n` +
+    `- **${t('notification.mdMonitorType')}**: {monitorType}\n` +
+    `- **${t('notification.mdCurrentStatus')}**: {statusText}\n` +
+    `- **${t('notification.mdChangeTime')}**: {time}\n` +
+    (data.failureCount ?
+      `- **${t('notification.mdFailureCount')}**: {failureCount} ${t('notification.mdTimes')}\n` +
+      `- **${t('notification.mdFirstFailureTime')}**: {firstFailureTime}\n` +
+      `- **${t('notification.mdLastFailureTime')}**: {lastFailureTime}\n` +
+      `- **${t('notification.mdFailureDuration')}**: {failureDuration} ${t('notification.mdMinutes')}\n\n` : "\n") +
     "{message}";
-  
+
   // 替换所有模板变量
   Object.entries(data).forEach(([key, value]) => {
     title = title.replace(new RegExp(`{${key}}`, 'g'), String(value));
     content = content.replace(new RegExp(`{${key}}`, 'g'), String(value));
   });
-  
+
   // 发送微信推送请求
-  await axios.post(pushUrl, { 
-    title, 
-    content 
+  await axios.post(pushUrl, {
+    title,
+    content
   }, {
     headers: {
       'Content-Type': 'application/json'
@@ -648,34 +673,36 @@ async function sendWechatNotification(
  */
 async function sendDingTalkNotification(
   config: DingTalkConfig,
-  data: NotificationData
+  data: NotificationData,
+  locale: NotifyLocale
 ) {
   const { webhookUrl, secret } = config;
   const messageType = 'markdown'; // 固定使用markdown格式
-  
+  const t = getServerTranslator(locale);
+
   if (!webhookUrl) {
     throw new Error('钉钉Webhook URL不能为空');
   }
-  
+
   // 构建消息内容
   let content = '';
-  const title = `酷监控 - ${data.monitorName} 状态${data.statusText}`;
-  
+  const title = t('notification.emailSubject', { name: data.monitorName, status: data.statusText });
+
   // 使用Markdown消息格式
-  content = `## 🔔 监控状态变更通知\n\n` +
-    `- **监控名称**: ${data.monitorName}\n` +
-    `- **监控类型**: ${data.monitorType}\n` +
-    `- **当前状态**: <font color="${data.statusCode === 1 ? '#10B981' : '#EF4444'}">${data.statusText}</font>\n` +
-    `- **变更时间**: ${data.time}\n`;
-  
+  content = `## 🔔 ${t('notification.mdTitle')}\n\n` +
+    `- **${t('notification.mdMonitorName')}**: ${data.monitorName}\n` +
+    `- **${t('notification.mdMonitorType')}**: ${data.monitorType}\n` +
+    `- **${t('notification.mdCurrentStatus')}**: <font color="${data.statusCode === 1 ? '#10B981' : '#EF4444'}">${data.statusText}</font>\n` +
+    `- **${t('notification.mdChangeTime')}**: ${data.time}\n`;
+
   if (data.failureCount) {
-    content += `- **连续失败次数**: ${data.failureCount} 次\n` +
-      `- **首次失败时间**: ${data.firstFailureTime}\n` +
-      `- **最后失败时间**: ${data.lastFailureTime}\n` +
-      `- **失败持续时间**: ${data.failureDuration} 分钟\n`;
+    content += `- **${t('notification.mdFailureCount')}**: ${data.failureCount} ${t('notification.mdTimes')}\n` +
+      `- **${t('notification.mdFirstFailureTime')}**: ${data.firstFailureTime}\n` +
+      `- **${t('notification.mdLastFailureTime')}**: ${data.lastFailureTime}\n` +
+      `- **${t('notification.mdFailureDuration')}**: ${data.failureDuration} ${t('notification.mdMinutes')}\n`;
   }
-  
-  content += `\n**详细信息**:\n\n${data.message}`;
+
+  content += `\n**${t('notification.mdDetail')}**:\n\n${data.message}`;
   
   // 构建钉钉消息体
   interface DingTalkMessageBody {
@@ -759,29 +786,31 @@ async function sendDingTalkNotification(
  */
 async function sendWorkWechatNotification(
   config: WorkWechatConfig,
-  data: NotificationData
+  data: NotificationData,
+  locale: NotifyLocale
 ) {
   const { webhookUrl } = config;
-  
+  const t = getServerTranslator(locale);
+
   if (!webhookUrl) {
     throw new Error('企业微信Webhook URL不能为空');
   }
-  
+
   // 构建企业微信消息内容
   const content = {
     msgtype: "markdown",
     markdown: {
-      content: `## 🔔 监控状态变更通知\n\n` +
-        `**监控名称**: ${data.monitorName}\n` +
-        `**监控类型**: ${data.monitorType}\n` +
-        `**当前状态**: <font color="${data.statusCode === 1 ? 'info' : 'warning'}">${data.statusText}</font>\n` +
-        `**变更时间**: ${data.time}\n` +
-        (data.failureCount ? 
-          `**连续失败次数**: ${data.failureCount} 次\n` +
-          `**首次失败时间**: ${data.firstFailureTime}\n` +
-          `**最后失败时间**: ${data.lastFailureTime}\n` +
-          `**失败持续时间**: ${data.failureDuration} 分钟\n` : '') +
-        `\n**详细信息**: ${data.message}`
+      content: `## 🔔 ${t('notification.mdTitle')}\n\n` +
+        `**${t('notification.mdMonitorName')}**: ${data.monitorName}\n` +
+        `**${t('notification.mdMonitorType')}**: ${data.monitorType}\n` +
+        `**${t('notification.mdCurrentStatus')}**: <font color="${data.statusCode === 1 ? 'info' : 'warning'}">${data.statusText}</font>\n` +
+        `**${t('notification.mdChangeTime')}**: ${data.time}\n` +
+        (data.failureCount ?
+          `**${t('notification.mdFailureCount')}**: ${data.failureCount} ${t('notification.mdTimes')}\n` +
+          `**${t('notification.mdFirstFailureTime')}**: ${data.firstFailureTime}\n` +
+          `**${t('notification.mdLastFailureTime')}**: ${data.lastFailureTime}\n` +
+          `**${t('notification.mdFailureDuration')}**: ${data.failureDuration} ${t('notification.mdMinutes')}\n` : '') +
+        `\n**${t('notification.mdDetail')}**: ${data.message}`
     }
   };
   

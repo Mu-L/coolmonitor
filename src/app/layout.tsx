@@ -3,18 +3,14 @@ import { Toaster } from "react-hot-toast";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import AuthContext from "@/context/AuthContext";
 import { ThemeProvider } from "@/components/theme-provider";
+import { I18nProvider } from "@/context/I18nContext";
 import Script from "next/script";
-
-// 系统启动现在通过 instrumentation.ts 自动初始化
 
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // suppressHydrationWarning 说明：
-  // - 允许我们在客户端通过脚本/ThemeProvider 动态切换 <html> 上的 class（dark/light），
-  // - 避免因服务端与客户端首帧 class 不一致而触发 Hydration 警告。
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
@@ -28,15 +24,31 @@ export default async function RootLayout({
               var root = document.documentElement;
               root.classList.remove('dark','light');
               root.classList.add(useDark ? 'dark' : 'light');
+
+              var LANG_KEY = 'coolmonitor-locale';
+              var savedLang = localStorage.getItem(LANG_KEY);
+              var detectedLang = 'zh';
+              try {
+                var langs = navigator.languages || [navigator.language || ''];
+                for (var i = 0; i < langs.length; i++) {
+                  var l = (langs[i] || '').toLowerCase();
+                  if (l.indexOf('en') === 0) { detectedLang = 'en'; break; }
+                  if (l.indexOf('zh') === 0) { detectedLang = 'zh'; break; }
+                }
+              } catch(e) {}
+              var useLang = savedLang || detectedLang;
+              root.lang = useLang === 'en' ? 'en' : 'zh-CN';
             }catch(e){}
           })();`}
         </Script>
       </head>
       <body className="font-sans bg-light-bg dark:bg-dark-bg text-light-text-primary dark:text-dark-text-primary">
         <ThemeProvider defaultTheme="dark">
-          <AuthContext>
-            {children}
-          </AuthContext>
+          <I18nProvider>
+            <AuthContext>
+              {children}
+            </AuthContext>
+          </I18nProvider>
           <Toaster position="top-right" />
         </ThemeProvider>
       </body>

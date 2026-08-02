@@ -1,4 +1,7 @@
+"use client";
+
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { useI18n } from "@/context/I18nContext";
 
 interface HttpAuthSectionProps {
   monitorType: string;
@@ -11,6 +14,7 @@ export function HttpAuthSection({
   requestHeaders,
   setRequestHeaders
 }: HttpAuthSectionProps) {
+  const { t } = useI18n();
   // HTTP认证状态
   const [authEnabled, setAuthEnabled] = useState(false);
   const [authType, setAuthType] = useState("basic");
@@ -125,7 +129,7 @@ export function HttpAuthSection({
 
   return (
     <div className="p-5 border border-primary/10 rounded-lg">
-      <h3 className="text-lg font-medium mb-4 text-primary">HTTP 认证</h3>
+      <h3 className="text-lg font-medium mb-4 text-primary">{t('monitorForm.httpAuth')}</h3>
       
       <div className="space-y-4">
         {/* 认证开关 */}
@@ -138,7 +142,7 @@ export function HttpAuthSection({
             className="w-4 h-4 text-primary border-primary/30 focus:ring-primary"
           />
           <label htmlFor="authEnabled" className="text-foreground/80">
-            启用HTTP认证
+            {t('monitorForm.enableHttpAuth')}
           </label>
         </div>
 
@@ -146,7 +150,7 @@ export function HttpAuthSection({
           <div className="space-y-4 pl-6">
             {/* 认证类型选择 */}
             <div className="space-y-2">
-              <label className="block text-foreground/80 font-medium">认证类型</label>
+              <label className="block text-foreground/80 font-medium">{t('monitorForm.authType')}</label>
               <div className="flex space-x-4">
                 <label className="flex items-center space-x-2">
                   <input
@@ -157,7 +161,7 @@ export function HttpAuthSection({
                     onChange={(e) => handleAuthTypeChange(e.target.value)}
                     className="w-4 h-4 text-primary border-primary/30 focus:ring-primary"
                   />
-                  <span className="text-foreground/80">Basic认证</span>
+                  <span className="text-foreground/80">{t('monitorForm.basicAuth')}</span>
                 </label>
                 <label className="flex items-center space-x-2">
                   <input
@@ -168,7 +172,7 @@ export function HttpAuthSection({
                     onChange={(e) => handleAuthTypeChange(e.target.value)}
                     className="w-4 h-4 text-primary border-primary/30 focus:ring-primary"
                   />
-                  <span className="text-foreground/80">Bearer Token</span>
+                  <span className="text-foreground/80">{t('monitorForm.bearerToken')}</span>
                 </label>
               </div>
             </div>
@@ -177,22 +181,22 @@ export function HttpAuthSection({
             {authType === "basic" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="block text-foreground/80 font-medium">用户名</label>
+                  <label className="block text-foreground/80 font-medium">{t('monitorForm.username')}</label>
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => handleBasicAuthChange("username", e.target.value)}
-                    placeholder="输入用户名"
+                    placeholder={t('monitorForm.inputUsername')}
                     className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-foreground/80 font-medium">密码</label>
+                  <label className="block text-foreground/80 font-medium">{t('monitorForm.password')}</label>
                   <input
                     type="password"
                     value={password}
                     onChange={(e) => handleBasicAuthChange("password", e.target.value)}
-                    placeholder="输入密码"
+                    placeholder={t('monitorForm.inputPassword')}
                     className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none"
                   />
                 </div>
@@ -207,23 +211,23 @@ export function HttpAuthSection({
                   type="password"
                   value={token}
                   onChange={(e) => handleTokenChange(e.target.value)}
-                  placeholder="输入Bearer Token"
+                  placeholder={t('monitorForm.inputToken')}
                   className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none"
                 />
                                  <p className="text-xs text-foreground/50">
-                   输入完整的Token，系统会自动添加&ldquo;Bearer &rdquo;前缀
+                   {t('monitorForm.tokenHint')}
                  </p>
               </div>
             )}
 
             {/* 提示信息 */}
             <div className="text-xs text-foreground/50 bg-primary/5 p-3 rounded-lg">
-              <p className="font-medium mb-1">认证信息说明：</p>
+              <p className="font-medium mb-1">{t('monitorForm.authInfoTitle')}</p>
               <ul className="space-y-1">
-                <li>• Basic认证：适用于需要用户名密码的API接口</li>
-                <li>• Bearer Token：适用于需要API密钥或JWT Token的接口</li>
-                <li>• 认证信息会自动添加到请求头中</li>
-                <li>• 密码和Token信息会以加密形式存储</li>
+                <li>{t('monitorForm.authInfo1')}</li>
+                <li>{t('monitorForm.authInfo2')}</li>
+                <li>{t('monitorForm.authInfo3')}</li>
+                <li>{t('monitorForm.authInfo4')}</li>
               </ul>
             </div>
           </div>
@@ -231,4 +235,4 @@ export function HttpAuthSection({
       </div>
     </div>
   );
-} 
+}

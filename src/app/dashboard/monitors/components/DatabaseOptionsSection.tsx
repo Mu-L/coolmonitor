@@ -1,4 +1,7 @@
+"use client";
+
 import { Dispatch, SetStateAction } from "react";
+import { useI18n } from "@/context/I18nContext";
 
 interface DatabaseOptionsSectionProps {
   monitorType: string;
@@ -23,6 +26,8 @@ export function DatabaseOptionsSection({
   query,
   setQuery
 }: DatabaseOptionsSectionProps) {
+  const { t } = useI18n();
+
   if (!["mysql", "redis"].includes(monitorType)) {
     return null;
   }
@@ -30,14 +35,14 @@ export function DatabaseOptionsSection({
   return (
     <div className="p-5 border border-primary/10 rounded-lg">
       <h3 className="text-lg font-medium mb-4 text-primary">
-        {monitorType === "redis" ? "Redis 连接选项" : "数据库连接选项"}
+        {monitorType === "redis" ? t('monitorForm.redisOptions') : t('monitorForm.dbOptions')}
       </h3>
       
       {/* Redis 不需要用户名/数据库名 */}
       {monitorType !== "redis" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="block text-foreground/80 font-medium">用户名</label>
+            <label className="block text-foreground/80 font-medium">{t('monitorForm.username')}</label>
             <input
               type="text"
               value={username}
@@ -48,7 +53,7 @@ export function DatabaseOptionsSection({
           </div>
           
           <div className="space-y-2">
-            <label className="block text-foreground/80 font-medium">密码</label>
+            <label className="block text-foreground/80 font-medium">{t('monitorForm.password')}</label>
             <input
               type="password"
               value={password}
@@ -62,21 +67,21 @@ export function DatabaseOptionsSection({
       {/* Redis 只需要密码 */}
       {monitorType === "redis" && (
         <div className="space-y-2">
-          <label className="block text-foreground/80 font-medium">密码</label>
+          <label className="block text-foreground/80 font-medium">{t('monitorForm.password')}</label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none"
           />
-          <p className="text-xs text-foreground/50">如果Redis不需要密码验证，请留空</p>
+          <p className="text-xs text-foreground/50">{t('monitorForm.redisPasswordHint')}</p>
         </div>
       )}
       
       {/* 数据库名称 - 对于MySQL */}
       {monitorType === "mysql" && (
         <div className="space-y-2 mt-6">
-          <label className="block text-foreground/80 font-medium">数据库名称</label>
+          <label className="block text-foreground/80 font-medium">{t('monitorForm.dbName')}</label>
           <input
             type="text"
             value={database}
@@ -84,7 +89,7 @@ export function DatabaseOptionsSection({
             className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none"
           />
           <p className="text-xs text-foreground/50">
-            可选，默认值为 &apos;mysql&apos;
+            {t('monitorForm.dbNameHint')}
           </p>
         </div>
       )}
@@ -92,7 +97,7 @@ export function DatabaseOptionsSection({
       {/* 查询 - 对于MySQL */}
       {monitorType === "mysql" && (
         <div className="space-y-2 mt-6">
-          <label className="block text-foreground/80 font-medium">测试查询</label>
+          <label className="block text-foreground/80 font-medium">{t('monitorForm.testQuery')}</label>
           <textarea
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -100,7 +105,7 @@ export function DatabaseOptionsSection({
             placeholder={`SELECT 1;`}
           ></textarea>
           <p className="text-xs text-foreground/50">
-            用于测试数据库连接的查询语句。留空将使用默认的查询：SELECT 1;
+            {t('monitorForm.testQueryHint')}
           </p>
         </div>
       )}
@@ -109,7 +114,7 @@ export function DatabaseOptionsSection({
       {monitorType === "redis" && (
         <div className="space-y-2 mt-6">
           <div className="mt-4">
-            <label className="block text-foreground/80 font-medium mb-2">Redis 命令</label>
+            <label className="block text-foreground/80 font-medium mb-2">{t('monitorForm.redisCommand')}</label>
             <input
               type="text"
               placeholder="PING"
@@ -118,11 +123,11 @@ export function DatabaseOptionsSection({
               className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none"
             />
             <p className="text-xs text-foreground/50 mt-1">
-              用于监控 Redis 的命令。默认是 PING
+              {t('monitorForm.redisCommandHint')}
             </p>
           </div>
         </div>
       )}
     </div>
   );
-} 
+}

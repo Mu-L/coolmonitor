@@ -1,4 +1,7 @@
+"use client";
+
 import { Dispatch, SetStateAction } from "react";
+import { useI18n } from "@/context/I18nContext";
 
 interface MonitorSettingsSectionProps {
   interval: string;
@@ -21,13 +24,14 @@ export function MonitorSettingsSection({
   resendInterval,
   setResendInterval
 }: MonitorSettingsSectionProps) {
+  const { t } = useI18n();
   return (
     <div className="p-5 border border-primary/10 rounded-lg">
-      <h3 className="text-lg font-medium mb-4 text-primary">监控设置</h3>
+      <h3 className="text-lg font-medium mb-4 text-primary">{t('monitorForm.monitorSettings')}</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* 心跳间隔 */}
         <div className="space-y-2">
-          <label className="block text-foreground/80 font-medium">心跳间隔</label>
+          <label className="block text-foreground/80 font-medium">{t('monitorForm.heartbeatInterval')}</label>
           <div className="flex items-center">
             <input
               type="number"
@@ -37,15 +41,15 @@ export function MonitorSettingsSection({
               min="1"
             />
             <span className="px-4 py-2 rounded-r-lg dark:bg-dark-nav bg-light-nav border border-l-0 border-primary/20">
-              秒
+              {t('common.seconds')}
             </span>
           </div>
-          <p className="text-xs text-foreground/50">监控检测的频率</p>
+          <p className="text-xs text-foreground/50">{t('monitorForm.heartbeatIntervalHint')}</p>
         </div>
         
         {/* 重试次数 */}
         <div className="space-y-2">
-          <label className="block text-foreground/80 font-medium">重试次数</label>
+          <label className="block text-foreground/80 font-medium">{t('monitorForm.retries')}</label>
           <input
             type="number"
             value={retries}
@@ -53,14 +57,14 @@ export function MonitorSettingsSection({
             className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none"
             min="0"
           />
-          <p className="text-xs text-foreground/50">标记为故障前的最大重试次数</p>
+          <p className="text-xs text-foreground/50">{t('monitorForm.retriesHint')}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         {/* 心跳重试间隔 */}
         <div className="space-y-2">
-          <label className="block text-foreground/80 font-medium">心跳重试间隔</label>
+          <label className="block text-foreground/80 font-medium">{t('monitorForm.retryInterval')}</label>
           <div className="flex items-center">
             <input
               type="number"
@@ -70,15 +74,15 @@ export function MonitorSettingsSection({
               min="1"
             />
             <span className="px-4 py-2 rounded-r-lg dark:bg-dark-nav bg-light-nav border border-l-0 border-primary/20">
-              秒
+              {t('common.seconds')}
             </span>
           </div>
-          <p className="text-xs text-foreground/50">重试检测的间隔时间</p>
+          <p className="text-xs text-foreground/50">{t('monitorForm.retryIntervalHint')}</p>
         </div>
         
         {/* 连续失败发送通知间隔 */}
         <div className="space-y-2">
-          <label className="block text-foreground/80 font-medium">通知重复间隔</label>
+          <label className="block text-foreground/80 font-medium">{t('monitorForm.resendInterval')}</label>
           <input
             type="number"
             value={resendInterval}
@@ -87,12 +91,12 @@ export function MonitorSettingsSection({
             min="0"
           />
           <p className="text-xs text-foreground/50">
-            {parseInt(resendInterval) > 0 
-              ? `每 ${resendInterval} 次连续失败时重新发送通知` 
-              : "禁用重复通知"}
+            {parseInt(resendInterval) > 0
+              ? t('monitorForm.resendIntervalHintOn', { n: resendInterval })
+              : t('monitorForm.resendIntervalHintOff')}
           </p>
         </div>
       </div>
     </div>
   );
-} 
+}

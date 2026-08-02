@@ -1,5 +1,8 @@
 // 监控历史项组件
+"use client";
+
 import Link from 'next/link';
+import { useI18n } from '@/context/I18nContext';
 
 export type MonitorStatus = "正常" | "故障" | "维护" | "未知" | "暂停";
 
@@ -50,13 +53,32 @@ export const getStatusClass = (status: MonitorStatus) => {
 };
 
 export default function MonitorHistoryItem({ monitorId, monitorName, status, timestamp, message, duration }: Omit<MonitorHistoryItemProps, 'id'>) {
+  const { t } = useI18n();
+
+  const getStatusLabel = (status: MonitorStatus) => {
+    switch (status) {
+      case "正常":
+        return t('status.up');
+      case "故障":
+        return t('status.down');
+      case "维护":
+        return t('status.pending');
+      case "未知":
+        return t('status.unknown');
+      case "暂停":
+        return t('status.paused');
+      default:
+        return t('status.unknown');
+    }
+  };
+
   return (
     <tr className="border-b border-primary/10 hover:bg-primary/5 transition-colors">
       <td className="py-3 px-4">
         <div className="flex items-center space-x-2">
           <div className={`w-3 h-3 rounded-full ${getStatusDotClass(status)}`}></div>
           <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusClass(status)}`}>
-            {status}
+            {getStatusLabel(status)}
           </span>
         </div>
       </td>

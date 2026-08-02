@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
-import { validateAuth } from '@/lib/auth-helpers';
-import { monitorOperations } from '@/lib/db';
-import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { monitorOperations } from '@/lib/db';
+import { prisma } from '@/lib/prisma';
+import { buildHeaderResolver } from '@/lib/monitors/template-fields';
 
 // POST /api/monitors/import - 导入Excel文件
+// 支持中英文表头，通过 buildHeaderResolver 自动识别
 export async function POST(request: NextRequest) {
   try {
-    // 验证用户是否已登录
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: '未授权访问' }, { status: 401 });
@@ -25,7 +25,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 验证文件类型
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
       return NextResponse.json(
         { error: '仅支持Excel文件(.xlsx, .xls)' },
@@ -33,15 +32,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 读取文件
     const arrayBuffer = await file.arrayBuffer();
     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-    
-    // 获取第一个工作表
+
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
-    
-    // 转换为JSON
+
     const data = XLSX.utils.sheet_to_json(worksheet, { raw: false });
 
     if (!Array.isArray(data) || data.length === 0) {
@@ -51,30 +47,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 构建表头解析器：把任意语言的列名映射为统一内部 key
+    const headerMap = buildHeaderResolver();
+
+    // 从行数据中安全取值，自动识别中英文表头
+    const getField = (row: Record<string, any>, fieldKey: string): string => {
+      // 先直接按内部 key 取
+      if (row[fieldKey] !== undefined && row[fieldKey] !== '') {
+        return String(row[fieldKey]).trim();
+      }
+      // 再遍历所有列，用 headerMap 匹配
+      for (const [excelHeader, internalKey] of Object.entries(headerMap)) {
+        if (internalKey === fieldKey && row[excelHeader] !== undefined && row[excelHeader] !== '') {
+          return String(row[excelHeader]).trim();
+        }
+      }
+      return '';
+    };
+
     const results = {
       success: 0,
       failed: 0,
       errors: [] as Array<{ row: number; error: string }>
     };
 
-    // 记录本次导入成功创建的监控 ID，方便导入完成后统一调度
     const createdMonitorIds: string[] = [];
 
-    // 获取所有分组，用于匹配分组名称
     const groups = await prisma.monitorGroup.findMany({
       where: { createdById: session.user.id }
     });
     const groupMap = new Map(groups.map(g => [g.name, g.id]));
 
-    // 处理每一行数据
     for (let i = 0; i < data.length; i++) {
       const row = data[i] as Record<string, any>;
-      const rowNumber = i + 2; // Excel行号（从2开始，第1行是标题）
+      const rowNumber = i + 2;
 
       try {
-        // 验证必填字段
-        const name = String(row['监控名称'] || row['name'] || '').trim();
-        const type = String(row['监控类型'] || row['type'] || '').trim().toLowerCase();
+        const name = getField(row, 'name');
+        const type = getField(row, 'type').toLowerCase();
 
         if (!name) {
           results.errors.push({ row: rowNumber, error: '监控名称不能为空' });
@@ -88,7 +98,6 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // 验证监控类型
         const validTypes = ['http', 'keyword', 'https-cert', 'port', 'mysql', 'redis', 'icmp', 'push'];
         if (!validTypes.includes(type)) {
           results.errors.push({ row: rowNumber, error: `无效的监控类型: ${type}，支持的类型: ${validTypes.join(', ')}` });
@@ -96,12 +105,10 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // 构建config对象
         const config: Record<string, any> = {};
 
-        // 根据监控类型设置不同的配置
         if (['http', 'keyword', 'https-cert'].includes(type)) {
-          const url = String(row['URL'] || row['url'] || '').trim();
+          const url = getField(row, 'url');
           if (!url) {
             results.errors.push({ row: rowNumber, error: `${type}类型监控需要URL字段` });
             results.failed++;
@@ -116,20 +123,20 @@ export async function POST(request: NextRequest) {
           }
 
           if (['http', 'keyword'].includes(type)) {
-            config.httpMethod = String(row['HTTP方法'] || row['httpMethod'] || 'GET').trim().toUpperCase();
-            config.statusCodes = String(row['状态码范围'] || row['statusCodes'] || '200-299').trim();
+            config.httpMethod = getField(row, 'httpMethod') || 'GET';
+            config.statusCodes = getField(row, 'statusCodes') || '200-299';
           }
 
-          config.maxRedirects = parseInt(String(row['最大重定向次数'] || row['maxRedirects'] || '10')) || 10;
-          config.connectTimeout = parseInt(String(row['连接超时(秒)'] || row['connectTimeout'] || '10')) || 10;
-          config.ignoreTls = String(row['忽略TLS错误'] || row['ignoreTls'] || 'false').toLowerCase() === 'true';
-          
+          config.maxRedirects = parseInt(getField(row, 'maxRedirects') || '10') || 10;
+          config.connectTimeout = parseInt(getField(row, 'connectTimeout') || '10') || 10;
+          config.ignoreTls = (getField(row, 'ignoreTls') || 'false').toLowerCase() === 'true';
+
           if (type === 'http') {
-            config.notifyCertExpiry = String(row['通知证书到期'] || row['notifyCertExpiry'] || 'false').toLowerCase() === 'true';
+            config.notifyCertExpiry = (getField(row, 'notifyCertExpiry') || 'false').toLowerCase() === 'true';
           }
 
           if (type === 'keyword') {
-            const keyword = String(row['关键字'] || row['keyword'] || '').trim();
+            const keyword = getField(row, 'keyword');
             if (!keyword) {
               results.errors.push({ row: rowNumber, error: '关键字监控需要关键字字段' });
               results.failed++;
@@ -138,16 +145,16 @@ export async function POST(request: NextRequest) {
             config.keyword = keyword;
           }
 
-          const requestBody = String(row['请求体'] || row['requestBody'] || '').trim();
-          const requestHeaders = String(row['请求头'] || row['requestHeaders'] || '').trim();
+          const requestBody = getField(row, 'requestBody');
+          const requestHeaders = getField(row, 'requestHeaders');
           if (requestBody) config.requestBody = requestBody;
           if (requestHeaders) config.requestHeaders = requestHeaders;
         }
 
         if (['port', 'mysql', 'redis'].includes(type)) {
-          const hostname = String(row['主机名'] || row['hostname'] || '').trim();
-          const port = String(row['端口'] || row['port'] || '').trim();
-          
+          const hostname = getField(row, 'hostname');
+          const port = getField(row, 'port');
+
           if (!hostname) {
             results.errors.push({ row: rowNumber, error: `${type}类型监控需要主机名字段` });
             results.failed++;
@@ -163,18 +170,18 @@ export async function POST(request: NextRequest) {
           config.port = parseInt(port);
 
           if (['mysql', 'redis'].includes(type)) {
-            config.username = String(row['用户名'] || row['username'] || '').trim();
-            config.password = String(row['密码'] || row['password'] || '').trim();
-            config.query = String(row['查询语句'] || row['query'] || '').trim();
-            
+            config.username = getField(row, 'username');
+            config.password = getField(row, 'password');
+            config.query = getField(row, 'query');
+
             if (type === 'mysql') {
-              config.database = String(row['数据库名'] || row['database'] || '').trim();
+              config.database = getField(row, 'database');
             }
           }
         }
 
         if (type === 'icmp') {
-          const hostname = String(row['主机名'] || row['hostname'] || '').trim();
+          const hostname = getField(row, 'hostname');
           if (!hostname) {
             results.errors.push({ row: rowNumber, error: 'ICMP监控需要主机名字段' });
             results.failed++;
@@ -187,12 +194,11 @@ export async function POST(request: NextRequest) {
 
         // 处理分组
         let groupId: string | null = null;
-        const groupName = String(row['分组名称'] || row['groupName'] || '').trim();
+        const groupName = getField(row, 'groupName');
         if (groupName) {
           if (groupMap.has(groupName)) {
             groupId = groupMap.get(groupName)!;
           } else {
-            // 创建新分组
             const newGroup = await prisma.monitorGroup.create({
               data: {
                 name: groupName,
@@ -204,46 +210,38 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // 构建监控数据
         const monitorData = {
           name,
           type,
           config,
-          interval: parseInt(String(row['检查间隔(秒)'] || row['interval'] || '60')) || 60,
-          retries: parseInt(String(row['重试次数'] || row['retries'] || '0')) || 0,
-          retryInterval: parseInt(String(row['重试间隔(秒)'] || row['retryInterval'] || '60')) || 60,
-          resendInterval: parseInt(String(row['重发间隔(秒)'] || row['resendInterval'] || '0')) || 0,
-          upsideDown: String(row['反向监控'] || row['upsideDown'] || 'false').toLowerCase() === 'true',
-          description: String(row['描述'] || row['description'] || '').trim() || '',
-          active: String(row['是否启用'] || row['active'] || 'true').toLowerCase() !== 'false',
+          interval: parseInt(getField(row, 'interval') || '60') || 60,
+          retries: parseInt(getField(row, 'retries') || '0') || 0,
+          retryInterval: parseInt(getField(row, 'retryInterval') || '60') || 60,
+          resendInterval: parseInt(getField(row, 'resendInterval') || '0') || 0,
+          upsideDown: (getField(row, 'upsideDown') || 'false').toLowerCase() === 'true',
+          description: getField(row, 'description'),
+          active: (getField(row, 'active') || 'true').toLowerCase() !== 'false',
           groupId,
           notificationBindings: []
         };
 
-        // 创建监控项
         const monitor = await monitorOperations.createMonitor(monitorData);
-
-        // 记录创建成功的监控 ID，导入结束后统一调度
         createdMonitorIds.push(monitor.id);
-
         results.success++;
       } catch (error) {
         console.error(`导入第${rowNumber}行失败:`, error);
-        results.errors.push({ 
-          row: rowNumber, 
-          error: error instanceof Error ? error.message : '未知错误' 
+        results.errors.push({
+          row: rowNumber,
+          error: error instanceof Error ? error.message : '未知错误'
         });
         results.failed++;
       }
     }
 
-    // 导入全部处理完后，再异步统一触发调度，避免在循环中频繁调度导致导入过程变慢
     if (createdMonitorIds.length > 0) {
       setImmediate(async () => {
         try {
           const { scheduleMonitor } = await import('@/lib/monitors/scheduler');
-
-          // 顺序调度新创建的监控项，避免一次性并发过高
           for (const id of createdMonitorIds) {
             try {
               await scheduleMonitor(id);

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { NotificationSettings } from "@/components/settings/notification-settings";
+import { useI18n } from "@/context/I18nContext";
 
 interface NotificationConfig {
   id: string;
@@ -27,6 +28,7 @@ export function NotificationSection({
   onBindingsChange,
   monitorId
 }: NotificationSectionProps) {
+  const { t } = useI18n();
   const [availableNotifications, setAvailableNotifications] = useState<NotificationConfig[]>([]);
   const [selectedNotifications, setSelectedNotifications] = useState<MonitorNotificationBinding[]>(initialBindings);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,7 +93,7 @@ export function NotificationSection({
       return false;
     } catch (error) {
       console.error('加载通知设置失败:', error);
-      toast.error('无法加载通知设置');
+      toast.error(t('notifications.loadFailed'));
       return false;
     } finally {
       setIsLoading(false);
@@ -127,7 +129,7 @@ export function NotificationSection({
       })
       .catch(error => {
         console.error('加载通知设置失败:', error);
-        toast.error('无法加载通知设置');
+        toast.error(t('notifications.loadFailed'));
       })
       .finally(() => {
         setIsLoading(false);
@@ -217,7 +219,7 @@ export function NotificationSection({
         })
         .catch(error => {
           console.error('加载通知设置失败:', error);
-          toast.error('无法加载通知设置');
+          toast.error(t('notifications.loadFailed'));
           needRefresh = true;
         })
         .finally(() => {
@@ -258,7 +260,7 @@ export function NotificationSection({
         })
         .catch(error => {
           console.error('加载通知设置失败:', error);
-          toast.error('无法加载通知设置');
+          toast.error(t('notifications.loadFailed'));
         })
         .finally(() => {
           setIsLoading(false);
@@ -281,7 +283,7 @@ export function NotificationSection({
       <div className="flex items-center justify-center h-40">
         <div className="text-primary flex flex-col items-center">
           <i className="fas fa-spinner fa-spin text-xl mb-2"></i>
-          <span className="text-sm">正在加载通知设置...</span>
+          <span className="text-sm">{t('notifications.loading')}</span>
         </div>
       </div>
     );
@@ -290,20 +292,20 @@ export function NotificationSection({
   if (availableNotifications.length === 0) {
     return (
       <div className="p-5 border border-primary/10 rounded-lg">
-        <h3 className="text-lg font-medium mb-4 text-primary">通知设置</h3>
+        <h3 className="text-lg font-medium mb-4 text-primary">{t('notifications.title')}</h3>
         <div className="flex flex-col items-center justify-center py-6 bg-primary/5 rounded-lg">
           <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-3">
             <i className="fas fa-bell text-xl"></i>
           </div>
           <p className="text-foreground/80 mb-4 text-center">
-            尚未配置任何通知方式
+            {t('notifications.noNotifications')}
           </p>
           <button 
             onClick={(e) => openManageModal(e)}
             className="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors text-sm flex items-center"
           >
             <i className="fas fa-plus mr-2"></i>
-            添加通知方式
+            {t('notifications.addNotification')}
           </button>
         </div>
         
@@ -313,7 +315,7 @@ export function NotificationSection({
             <div className="bg-dark-card dark:bg-dark-card bg-light-card w-full max-w-4xl rounded-xl shadow-2xl border border-primary/25 animate-fadeIn overflow-auto max-h-[90vh]">
               <div className="flex justify-between items-center p-5 border-b border-primary/10 sticky top-0 bg-dark-card dark:bg-dark-card bg-light-card z-10">
                 <h3 className="text-lg font-medium dark:text-foreground text-light-text-primary">
-                  管理通知方式
+                  {t('notifications.manageTitle')}
                 </h3>
                 <button 
                   onClick={handleCancelClick}
@@ -332,13 +334,13 @@ export function NotificationSection({
                   onClick={handleCancelClick}
                   className="px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors mr-3"
                 >
-                  取消
+                  {t('common.cancel')}
                 </button>
                 <button 
                   onClick={handleCompleteClick}
                   className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
                 >
-                  完成
+                  {t('common.close')}
                 </button>
               </div>
             </div>
@@ -351,20 +353,20 @@ export function NotificationSection({
   return (
     <div className="p-5 border border-primary/10 rounded-lg">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium text-primary">通知设置</h3>
+        <h3 className="text-lg font-medium text-primary">{t('notifications.title')}</h3>
         <div className="flex items-center space-x-2">
           <button 
             onClick={(e) => openManageModal(e)}
             className="text-primary hover:text-primary/80 text-sm flex items-center"
           >
             <i className="fas fa-cog mr-1"></i>
-            管理通知
+            {t('notifications.manageNotifications')}
           </button>
         </div>
       </div>
       
       <p className="text-foreground/70 mb-4">
-        选择当前监控项触发告警时要通知的方式
+        {t('notifications.selectHint')}
       </p>
       
       <div className="space-y-3">
@@ -399,7 +401,7 @@ export function NotificationSection({
                   </label>
                   <p className="text-xs text-foreground/60">
                     {notification.type}
-                    {!notification.enabled && ' (已禁用)'}
+                    {!notification.enabled && t('notifications.disabled')}
                   </p>
                 </div>
               </div>
@@ -411,7 +413,7 @@ export function NotificationSection({
       <div className="mt-4 text-xs text-foreground/60 bg-dark-nav/30 p-3 rounded-lg">
         <p className="flex items-center">
           <i className="fas fa-info-circle text-primary mr-2"></i>
-          您可以通过&ldquo;管理通知&rdquo;添加、编辑和删除通知配置
+          {t('notifications.manageHint')}
         </p>
       </div>
       
@@ -421,7 +423,7 @@ export function NotificationSection({
           <div className="bg-dark-card dark:bg-dark-card bg-light-card w-full max-w-4xl rounded-xl shadow-2xl border border-primary/25 animate-fadeIn overflow-auto max-h-[90vh]">
             <div className="flex justify-between items-center p-5 border-b border-primary/10 sticky top-0 bg-dark-card dark:bg-dark-card bg-light-card z-10">
               <h3 className="text-lg font-medium dark:text-foreground text-light-text-primary">
-                管理通知方式
+                {t('notifications.manageTitle')}
               </h3>
               <button 
                 onClick={handleCancelClick}
@@ -440,13 +442,13 @@ export function NotificationSection({
                 onClick={handleCancelClick}
                 className="px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors mr-3"
               >
-                取消
+                {t('common.cancel')}
               </button>
               <button 
                 onClick={handleCompleteClick}
                 className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
               >
-                完成
+                {t('common.close')}
               </button>
             </div>
           </div>

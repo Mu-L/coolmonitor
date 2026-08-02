@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { useI18n } from "@/context/I18nContext";
 
 interface MonitorGroup {
   id: string;
@@ -18,6 +19,7 @@ interface MonitorGroup {
 }
 
 export function MonitorGroupSettings() {
+  const { t } = useI18n();
   const [groups, setGroups] = useState<MonitorGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -34,7 +36,7 @@ export function MonitorGroupSettings() {
       }
     } catch (error) {
       console.error('获取分组失败:', error);
-      toast.error('获取分组失败');
+      toast.error(t('monitorGroups.fetchFailed'));
     } finally {
       setLoading(false);
     }
@@ -46,7 +48,7 @@ export function MonitorGroupSettings() {
 
   // 删除分组
   const handleDeleteGroup = async (groupId: string) => {
-    if (!confirm('确定要删除这个分组吗？删除后，该分组下的监控项将变为未分组状态。')) {
+    if (!confirm(t('monitorGroups.deleteConfirm'))) {
       return;
     }
 
@@ -56,15 +58,15 @@ export function MonitorGroupSettings() {
       });
 
       if (response.ok) {
-        toast.success('分组删除成功');
+        toast.success(t('monitorGroups.deleteSuccess'));
         fetchGroups();
       } else {
         const error = await response.json();
-        toast.error(error.message || '删除分组失败');
+        toast.error(error.message || t('monitorGroups.deleteFailed'));
       }
     } catch (error) {
       console.error('删除分组失败:', error);
-      toast.error('删除分组失败');
+      toast.error(t('monitorGroups.deleteFailed'));
     }
   };
 
@@ -100,7 +102,7 @@ export function MonitorGroupSettings() {
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!groupName.trim()) {
-        toast.error('请输入分组名称');
+        toast.error(t('monitorGroups.nameEmpty'));
         return;
       }
 
@@ -122,16 +124,16 @@ export function MonitorGroupSettings() {
         });
 
         if (response.ok) {
-          toast.success(editingGroup ? '分组更新成功' : '分组创建成功');
+          toast.success(editingGroup ? t('monitorGroups.updateSuccess') : t('monitorGroups.createSuccess'));
           onSuccess();
           onClose();
         } else {
           const error = await response.json();
-          toast.error(error.message || (editingGroup ? '更新分组失败' : '创建分组失败'));
+          toast.error(error.message || (editingGroup ? t('monitorGroups.updateFailed') : t('monitorGroups.createFailed')));
         }
       } catch (error) {
         console.error(editingGroup ? '更新分组失败:' : '创建分组失败:', error);
-        toast.error(editingGroup ? '更新分组失败' : '创建分组失败');
+        toast.error(editingGroup ? t('monitorGroups.updateFailed') : t('monitorGroups.createFailed'));
       } finally {
         setIsSubmitting(false);
       }
@@ -143,34 +145,34 @@ export function MonitorGroupSettings() {
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-card border border-primary/20 rounded-lg p-6 w-full max-w-md mx-4">
           <h3 className="text-lg font-medium mb-4 text-primary">
-            {editingGroup ? '编辑分组' : '新建分组'}
+            {editingGroup ? t('monitorGroups.editGroup') : t('monitorGroups.newGroup')}
           </h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-foreground/80 font-medium mb-2">分组名称 *</label>
+              <label className="block text-foreground/80 font-medium mb-2">{t('monitorGroups.groupName')} *</label>
               <input
                 type="text"
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
-                placeholder="请输入分组名称"
+                placeholder={t('monitorGroups.groupNamePlaceholder')}
                 className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none"
                 required
               />
             </div>
             
             <div>
-              <label className="block text-foreground/80 font-medium mb-2">描述</label>
+              <label className="block text-foreground/80 font-medium mb-2">{t('monitorGroups.description')}</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="可选的分组描述"
+                placeholder={t('monitorGroups.descriptionPlaceholder')}
                 rows={3}
                 className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none"
               />
             </div>
             
             <div>
-              <label className="block text-foreground/80 font-medium mb-2">颜色</label>
+              <label className="block text-foreground/80 font-medium mb-2">{t('monitorGroups.color')}</label>
               <div className="flex items-center space-x-2">
                 <input
                   type="color"
@@ -178,7 +180,7 @@ export function MonitorGroupSettings() {
                   onChange={(e) => setColor(e.target.value)}
                   className="w-12 h-10 rounded border border-primary/20"
                 />
-                <span className="text-sm text-foreground/60">选择分组显示颜色</span>
+                <span className="text-sm text-foreground/60">{t('monitorGroups.colorHint')}</span>
               </div>
             </div>
             
@@ -188,14 +190,14 @@ export function MonitorGroupSettings() {
                 onClick={onClose}
                 className="flex-1 px-4 py-2 border border-primary/30 text-primary rounded-lg hover:bg-primary/5 transition-colors"
               >
-                取消
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting || !groupName.trim()}
                 className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? '保存中...' : (editingGroup ? '更新分组' : '创建分组')}
+                {isSubmitting ? t('monitorGroups.saving') : (editingGroup ? t('monitorGroups.updateGroupBtn') : t('monitorGroups.createGroupBtn'))}
               </button>
             </div>
           </form>
@@ -209,7 +211,7 @@ export function MonitorGroupSettings() {
       <div className="flex items-center justify-center h-64">
         <div className="text-primary">
           <i className="fas fa-spinner fa-spin mr-2"></i>
-          加载分组数据中...
+          {t('monitorGroups.loadingGroups')}
         </div>
       </div>
     );
@@ -219,9 +221,9 @@ export function MonitorGroupSettings() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-medium text-foreground">监控分组管理</h3>
+          <h3 className="text-lg font-medium text-foreground">{t('monitorGroups.title')}</h3>
           <p className="text-sm text-foreground/60 mt-1">
-            管理监控项的分组，便于组织和分类监控项
+            {t('monitorGroups.hint')}
           </p>
         </div>
         <button
@@ -229,7 +231,7 @@ export function MonitorGroupSettings() {
           className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center space-x-2"
         >
           <i className="fas fa-plus"></i>
-          <span>新建分组</span>
+          <span>{t('monitorGroups.createGroup')}</span>
         </button>
       </div>
 
@@ -238,13 +240,13 @@ export function MonitorGroupSettings() {
           <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
             <i className="fas fa-folder text-2xl text-primary"></i>
           </div>
-          <h3 className="text-lg font-medium text-foreground mb-2">暂无分组</h3>
-          <p className="text-foreground/60 mb-4">创建分组来更好地组织您的监控项</p>
+          <h3 className="text-lg font-medium text-foreground mb-2">{t('monitorGroups.noGroups')}</h3>
+          <p className="text-foreground/60 mb-4">{t('monitorGroups.noGroupsHint')}</p>
           <button
             onClick={() => setShowCreateDialog(true)}
             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
           >
-            创建第一个分组
+            {t('monitorGroups.createFirst')}
           </button>
         </div>
       ) : (
@@ -269,19 +271,19 @@ export function MonitorGroupSettings() {
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-xs text-foreground/50 bg-primary/10 px-2 py-1 rounded">
-                    {group.monitors.length} 个监控项
+                    {t('monitorGroups.monitorCount', { n: group.monitors.length })}
                   </span>
                   <button
                     onClick={() => setEditingGroup(group)}
                     className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                    title="编辑分组"
+                    title={t('monitorGroups.editGroupTitle')}
                   >
                     <i className="fas fa-edit"></i>
                   </button>
                   <button
                     onClick={() => handleDeleteGroup(group.id)}
                     className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                    title="删除分组"
+                    title={t('monitorGroups.deleteGroupTitle')}
                   >
                     <i className="fas fa-trash"></i>
                   </button>
@@ -290,7 +292,7 @@ export function MonitorGroupSettings() {
               
               {group.monitors.length > 0 && (
                 <div className="space-y-2">
-                  <h5 className="text-sm font-medium text-foreground/70">包含的监控项：</h5>
+                  <h5 className="text-sm font-medium text-foreground/70">{t('monitorGroups.containedMonitors')}</h5>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {group.monitors.map((monitor) => (
                       <div
@@ -307,7 +309,7 @@ export function MonitorGroupSettings() {
                           {monitor.name}
                         </span>
                         {!monitor.active && (
-                          <span className="text-xs text-foreground/50">(暂停)</span>
+                          <span className="text-xs text-foreground/50">{(' (' + t('status.paused') + ')')}</span>
                         )}
                       </div>
                     ))}

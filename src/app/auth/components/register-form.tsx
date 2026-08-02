@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
+import { useI18n } from '@/context/I18nContext';
 
 interface RegisterFormProps {
   isAdminSetup?: boolean;
 }
 
 export default function RegisterForm({ isAdminSetup = true }: RegisterFormProps) {
+  const { t } = useI18n();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -21,28 +23,25 @@ export default function RegisterForm({ isAdminSetup = true }: RegisterFormProps)
     setLoading(true);
     setError('');
 
-    // 验证表单
     if (!username || !password || !confirmPassword) {
-      setError('请填写所有必填字段');
+      setError(t('auth.fillRequired'));
       setLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('两次输入的密码不一致');
+      setError(t('auth.passwordMismatch'));
       setLoading(false);
       return;
     }
 
     if (password.length < 6) {
-      setError('密码长度至少为6个字符');
+      setError(t('auth.passwordTooShort'));
       setLoading(false);
       return;
     }
 
     try {
-      console.log("开始注册:", username);
-      // 调用注册API
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
@@ -54,32 +53,27 @@ export default function RegisterForm({ isAdminSetup = true }: RegisterFormProps)
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || '注册失败');
+        throw new Error(data.message || t('auth.registerFailed'));
       }
 
-      console.log("注册成功，开始登录");
-      // 注册成功后自动登录
       const result = await signIn('credentials', {
         redirect: false,
-        login: username, // 使用用户名登录
+        login: username,
         password,
       });
 
-      console.log("登录结果:", result);
       if (result?.error) {
-        setError('自动登录失败，请尝试手动登录');
+        setError(t('auth.autoLoginFailed'));
         setLoading(false);
         return;
       }
 
-      // 登录成功，直接跳转到仪表盘
-      console.log("登录成功，跳转到仪表盘");
       router.push('/dashboard');
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('注册过程中发生错误');
+        setError(t('auth.registerError'));
       }
       setLoading(false);
     }
@@ -89,10 +83,10 @@ export default function RegisterForm({ isAdminSetup = true }: RegisterFormProps)
     <div className="w-full max-w-md">
       <form onSubmit={handleSubmit} className="bg-card p-8 rounded-xl shadow-lg border border-purple-600/15">
         <h2 className="text-2xl font-bold text-center mb-6 text-primary">
-          {isAdminSetup ? "创建管理员账户" : "创建新账户"}
+          {isAdminSetup ? t('auth.createAdminAccount') : t('auth.createNewAccount')}
         </h2>
         {isAdminSetup && (
-          <p className="text-center mb-6 text-foreground text-sm">您是第一个用户，将被设置为系统管理员</p>
+          <p className="text-center mb-6 text-foreground text-sm">{t('auth.firstUserHint')}</p>
         )}
         
         {error && (
@@ -103,7 +97,7 @@ export default function RegisterForm({ isAdminSetup = true }: RegisterFormProps)
         
         <div className="mb-4">
           <label htmlFor="username" className="block mb-2 text-sm font-medium text-foreground">
-            账户名 <span className="text-red-500">*</span>
+            {t('auth.accountName')} <span className="text-red-500">*</span>
           </label>
           <input
             id="username"
@@ -118,7 +112,7 @@ export default function RegisterForm({ isAdminSetup = true }: RegisterFormProps)
         
         <div className="mb-4">
           <label htmlFor="password" className="block mb-2 text-sm font-medium text-foreground">
-            密码 <span className="text-red-500">*</span>
+            {t('auth.password')} <span className="text-red-500">*</span>
           </label>
           <input
             id="password"
@@ -133,7 +127,7 @@ export default function RegisterForm({ isAdminSetup = true }: RegisterFormProps)
         
         <div className="mb-6">
           <label htmlFor="confirmPassword" className="block mb-2 text-sm font-medium text-foreground">
-            确认密码 <span className="text-red-500">*</span>
+            {t('auth.confirmPassword')} <span className="text-red-500">*</span>
           </label>
           <input
             id="confirmPassword"
@@ -154,10 +148,10 @@ export default function RegisterForm({ isAdminSetup = true }: RegisterFormProps)
         >
           {loading ? (
             <span className="flex items-center justify-center">
-              <i className="fas fa-circle-notch fa-spin mr-2"></i> 注册中...
+              <i className="fas fa-circle-notch fa-spin mr-2"></i> {t('auth.registering')}
             </span>
           ) : (
-            isAdminSetup ? "创建管理员账户" : "注册"
+            isAdminSetup ? t('auth.createAdminAccount') : t('auth.register')
           )}
         </button>
       </form>

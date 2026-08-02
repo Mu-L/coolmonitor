@@ -3,8 +3,10 @@
 import { useState, useEffect, FormEvent, useRef, useCallback } from "react";
 import { SETTINGS_KEYS } from "@/lib/settings";
 import { useSession } from "next-auth/react";
+import { useI18n } from "@/context/I18nContext";
 
 export function SystemSettings() {
+  const { t } = useI18n();
   const { data: session } = useSession();
   const [dataRetentionDays, setDataRetentionDays] = useState(90);
   const [proxyEnabled, setProxyEnabled] = useState(false);
@@ -41,7 +43,7 @@ export function SystemSettings() {
       const proxyResponse = await fetch(`/api/settings?section=proxy&_=${timestamp}`);
       
       if (!generalResponse.ok || !proxyResponse.ok) {
-        throw new Error('加载设置失败');
+        throw new Error(t('systemSettings.loadFailed'));
       }
       
       const generalData = await generalResponse.json();
@@ -65,7 +67,7 @@ export function SystemSettings() {
       }
     } catch (err) {
       console.error('加载设置失败:', err);
-      setError('加载设置失败，请刷新页面重试');
+      setError(t('systemSettings.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -219,12 +221,12 @@ export function SystemSettings() {
     
     // 验证新密码
     if (newPassword !== confirmPassword) {
-      setPasswordError('两次输入的密码不一致');
+      setPasswordError(t('systemSettings.passwordMismatch'));
       return;
     }
     
     if (newPassword.length < 6) {
-      setPasswordError('密码长度不能少于6个字符');
+      setPasswordError(t('systemSettings.passwordTooShort'));
       return;
     }
     
@@ -233,7 +235,7 @@ export function SystemSettings() {
       const userId = session?.user?.id;
       
       if (!userId) {
-        setPasswordError('用户未登录或会话已过期');
+        setPasswordError(t('systemSettings.userNotLoggedIn'));
         return;
       }
       
@@ -252,7 +254,7 @@ export function SystemSettings() {
       const data = await response.json();
       
       if (!response.ok || !data.success) {
-        setPasswordError(data.error || '密码更新失败');
+        setPasswordError(data.error || t('systemSettings.passwordUpdateFailed'));
         return;
       }
       
@@ -267,7 +269,7 @@ export function SystemSettings() {
       
     } catch (err) {
       console.error('更新密码失败:', err);
-      setPasswordError('密码更新失败，请重试');
+      setPasswordError(t('systemSettings.passwordUpdateError'));
     }
   };
 
@@ -298,7 +300,7 @@ export function SystemSettings() {
           <div class="animate-spin h-6 w-6 text-primary">
             <i class="fas fa-circle-notch fa-spin text-xl"></i>
           </div>
-          <span class="text-lg font-medium dark:text-foreground text-light-text-primary">正在测试代理连接...</span>
+          <span class="text-lg font-medium dark:text-foreground text-light-text-primary">${t('systemSettings.testingProxy')}</span>
         </div>
       `;
       
@@ -381,7 +383,7 @@ export function SystemSettings() {
           <div class="w-10 h-10 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center mr-3">
             <i class="fas fa-check-circle text-lg"></i>
           </div>
-          <h3 class="text-lg font-medium text-green-500">代理连接成功!</h3>
+          <h3 class="text-lg font-medium text-green-500">${t('systemSettings.proxySuccess')}</h3>
         `;
         
         // 对话框内容
@@ -390,16 +392,16 @@ export function SystemSettings() {
         dialogContent.innerHTML = `
           <div class="grid grid-cols-2 gap-3">
             <div class="bg-green-500/5 p-3 rounded-lg border border-green-500/10">
-              <div class="text-xs text-gray-500 mb-1">响应时间</div>
+              <div class="text-xs text-gray-500 mb-1">${t('systemSettings.responseTime')}</div>
               <div class="text-lg font-medium text-green-500">${testResult.data.ping}ms</div>
             </div>
             <div class="bg-green-500/5 p-3 rounded-lg border border-green-500/10">
-              <div class="text-xs text-gray-500 mb-1">响应状态</div>
+              <div class="text-xs text-gray-500 mb-1">${t('systemSettings.responseStatus')}</div>
               <div class="text-lg font-medium text-green-500">${testResult.data.statusCode}</div>
             </div>
           </div>
           <div class="bg-green-500/5 p-3 rounded-lg border border-green-500/10">
-            <div class="text-xs text-gray-500 mb-1">代理服务器</div>
+            <div class="text-xs text-gray-500 mb-1">${t('systemSettings.proxyServerLabel')}</div>
             <div class="font-medium">${testResult.data.proxyServer}:${testResult.data.proxyPort}</div>
           </div>
         `;
@@ -410,7 +412,7 @@ export function SystemSettings() {
         
         const closeButton = document.createElement('button');
         closeButton.className = 'px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors';
-        closeButton.innerText = '关闭';
+        closeButton.innerText = t('common.close');
         closeButton.onclick = cleanup;
         
         dialogFooter.appendChild(closeButton);
@@ -432,7 +434,7 @@ export function SystemSettings() {
           <div class="w-10 h-10 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center mr-3">
             <i class="fas fa-exclamation-circle text-lg"></i>
           </div>
-          <h3 class="text-lg font-medium text-red-500">代理连接失败!</h3>
+          <h3 class="text-lg font-medium text-red-500">${t('systemSettings.proxyFailed')}</h3>
         `;
         
         // 对话框内容
@@ -440,17 +442,17 @@ export function SystemSettings() {
         dialogContent.className = 'p-5 space-y-3';
         dialogContent.innerHTML = `
           <div class="bg-red-500/5 p-3 rounded-lg border border-red-500/10">
-            <div class="text-xs text-gray-500 mb-1">错误信息</div>
+            <div class="text-xs text-gray-500 mb-1">${t('systemSettings.errorMsg')}</div>
             <div class="font-medium text-red-500">${testResult.error}</div>
           </div>
           <div class="bg-red-500/5 p-3 rounded-lg border border-red-500/10">
-            <div class="text-xs text-gray-500 mb-1">代理服务器</div>
+            <div class="text-xs text-gray-500 mb-1">${t('systemSettings.proxyServerLabel')}</div>
             <div class="font-medium">${testResult.proxyServer || proxyServer}:${testResult.proxyPort || proxyPort}</div>
           </div>
           <div class="bg-red-500/5 p-3 rounded-lg border border-red-500/10 text-sm">
             <div class="flex items-center">
               <i class="fas fa-info-circle text-gray-500 mr-2"></i>
-              <span>请检查代理服务器地址和端口是否正确，并确保代理服务器已启动且可访问。</span>
+              <span>${t('systemSettings.proxyCheckHint')}</span>
             </div>
           </div>
         `;
@@ -461,7 +463,7 @@ export function SystemSettings() {
         
         const closeButton = document.createElement('button');
         closeButton.className = 'px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors';
-        closeButton.innerText = '关闭';
+        closeButton.innerText = t('common.close');
         closeButton.onclick = cleanup;
         
         dialogFooter.appendChild(closeButton);
@@ -512,7 +514,7 @@ export function SystemSettings() {
         <div class="w-10 h-10 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center mr-3">
           <i class="fas fa-exclamation-triangle text-lg"></i>
         </div>
-        <h3 class="text-lg font-medium text-red-500">测试过程发生错误!</h3>
+        <h3 class="text-lg font-medium text-red-500">${t('systemSettings.proxyTestError')}</h3>
       `;
       
       // 对话框内容
@@ -520,7 +522,7 @@ export function SystemSettings() {
       dialogContent.className = 'p-5';
       dialogContent.innerHTML = `
         <div class="bg-red-500/5 p-3 rounded-lg border border-red-500/10">
-          <div class="font-medium text-red-500">${err instanceof Error ? err.message : '未知错误，请查看控制台日志'}</div>
+          <div class="font-medium text-red-500">${err instanceof Error ? err.message : t('systemSettings.unknownError')}</div>
         </div>
       `;
       
@@ -530,7 +532,7 @@ export function SystemSettings() {
       
       const closeButton = document.createElement('button');
       closeButton.className = 'px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors';
-      closeButton.innerText = '关闭';
+      closeButton.innerText = t('common.close');
       closeButton.onclick = cleanup;
       
       dialogFooter.appendChild(closeButton);
@@ -558,7 +560,7 @@ export function SystemSettings() {
       <div className="flex items-center justify-center h-full">
         <div className="text-primary flex flex-col items-center">
           <i className="fas fa-spinner fa-spin fa-2x mb-3"></i>
-          <span>正在加载设置...</span>
+          <span>{t('systemSettings.loadingSettings')}</span>
         </div>
       </div>
     );
@@ -574,7 +576,7 @@ export function SystemSettings() {
             onClick={() => window.location.reload()}
             className="mt-4 px-4 py-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-all text-sm"
           >
-            点击刷新
+            {t('systemSettings.clickRefresh')}
           </button>
         </div>
       </div>
@@ -584,9 +586,9 @@ export function SystemSettings() {
   return (
     <form id="system-settings-form" ref={formRef} onSubmit={(e) => e.preventDefault()} className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold dark:text-foreground text-light-text-primary">系统设置</h3>
+        <h3 className="text-lg font-semibold dark:text-foreground text-light-text-primary">{t('systemSettings.title')}</h3>
         <div className="text-xs dark:text-foreground/60 text-light-text-secondary bg-primary/5 px-3 py-1 rounded-full">
-          基本配置
+          {t('systemSettings.basicConfig')}
         </div>
       </div>
       
@@ -598,9 +600,9 @@ export function SystemSettings() {
               <i className="fas fa-history"></i>
             </div>
             <div>
-              <span className="text-sm font-medium dark:text-foreground text-light-text-primary">数据保留策略</span>
+              <span className="text-sm font-medium dark:text-foreground text-light-text-primary">{t('systemSettings.dataRetention')}</span>
               <p className="text-xs dark:text-foreground/60 text-light-text-secondary mt-0.5">
-                设置监控历史数据的保留天数
+                {t('systemSettings.dataRetentionHint')}
               </p>
             </div>
           </label>
@@ -626,17 +628,17 @@ export function SystemSettings() {
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between">
-            <span className="text-xs dark:text-foreground/60 text-light-text-secondary">最少保留7天</span>
+            <span className="text-xs dark:text-foreground/60 text-light-text-secondary">{t('systemSettings.min7')}</span>
             <span className="text-xs dark:text-foreground/80 text-light-text-primary font-medium">
-              {dataRetentionDays === 7 ? '最少' : 
-               dataRetentionDays >= 180 ? '长期保留' : 
-               dataRetentionDays >= 90 ? '标准' : '短期'}
+              {dataRetentionDays === 7 ? t('systemSettings.minLabel') :
+               dataRetentionDays >= 180 ? t('systemSettings.longTerm') :
+               dataRetentionDays >= 90 ? t('systemSettings.standard') : t('systemSettings.shortTerm')}
             </span>
-            <span className="text-xs dark:text-foreground/60 text-light-text-secondary">最多保留365天</span>
+            <span className="text-xs dark:text-foreground/60 text-light-text-secondary">{t('systemSettings.max365')}</span>
           </div>
           <p className="mt-4 text-xs dark:text-foreground/70 text-light-text-secondary bg-primary/5 p-2 rounded-lg border border-primary/10">
             <i className="fas fa-info-circle mr-1.5"></i>
-            超过保留期限的监控历史数据将被自动清除，无法恢复
+            {t('systemSettings.dataRetentionWarning')}
           </p>
         </div>
         
@@ -646,7 +648,7 @@ export function SystemSettings() {
             <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center mr-3">
               <i className="fas fa-network-wired"></i>
             </div>
-            <span className="font-medium">HTTP 代理设置</span>
+            <span className="font-medium">{t('systemSettings.proxySettings')}</span>
           </div>
           
           <div className="p-5 space-y-5">
@@ -656,9 +658,9 @@ export function SystemSettings() {
                   <i className={`fas ${proxyEnabled ? 'fa-check' : 'fa-times'}`}></i>
                 </div>
                 <div>
-                  <span className="text-sm font-medium dark:text-foreground text-light-text-primary">启用 HTTP 代理</span>
+                  <span className="text-sm font-medium dark:text-foreground text-light-text-primary">{t('systemSettings.enableProxy')}</span>
                   <p className="text-xs dark:text-foreground/60 text-light-text-secondary mt-0.5">
-                    为监控请求使用代理服务器
+                    {t('systemSettings.enableProxyHint')}
                   </p>
                 </div>
               </div>
@@ -685,13 +687,13 @@ export function SystemSettings() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="md:col-span-2">
                     <label className="block text-xs font-medium dark:text-foreground/80 text-light-text-primary mb-1.5">
-                      代理服务器地址
+                      {t('systemSettings.proxyServerAddr')}
                     </label>
                     <input 
                       type="text" 
                       name="proxyServer"
                       className="w-full px-4 py-2.5 rounded-lg border border-primary/20 bg-dark-card dark:bg-dark-card bg-light-card dark:text-foreground text-light-text-primary focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                      placeholder="例如：proxy.example.com"
+                      placeholder={t('systemSettings.proxyServerPlaceholder')}
                       value={proxyServer}
                       onChange={(e) => setProxyServer(e.target.value)}
                     />
@@ -699,7 +701,7 @@ export function SystemSettings() {
                   
                   <div>
                     <label className="block text-xs font-medium dark:text-foreground/80 text-light-text-primary mb-1.5">
-                      端口
+                      {t('systemSettings.port')}
                     </label>
                     <input 
                       type="number" 
@@ -715,13 +717,13 @@ export function SystemSettings() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium dark:text-foreground/80 text-light-text-primary mb-1.5">
-                      用户名 (可选)
+                      {t('systemSettings.usernameOpt')}
                     </label>
                     <input 
                       type="text" 
                       name="proxyUsername"
                       className="w-full px-4 py-2.5 rounded-lg border border-primary/20 bg-dark-card dark:bg-dark-card bg-light-card dark:text-foreground text-light-text-primary focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                      placeholder="代理认证用户名"
+                      placeholder={t('systemSettings.proxyUsernamePlaceholder')}
                       value={proxyUsername}
                       onChange={(e) => setProxyUsername(e.target.value)}
                     />
@@ -729,13 +731,13 @@ export function SystemSettings() {
                   
                   <div>
                     <label className="block text-xs font-medium dark:text-foreground/80 text-light-text-primary mb-1.5">
-                      密码 (可选)
+                      {t('systemSettings.passwordOpt')}
                     </label>
                     <input 
                       type="password" 
                       name="proxyPassword"
                       className="w-full px-4 py-2.5 rounded-lg border border-primary/20 bg-dark-card dark:bg-dark-card bg-light-card dark:text-foreground text-light-text-primary focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                      placeholder="代理认证密码"
+                      placeholder={t('systemSettings.proxyPasswordPlaceholder')}
                       value={proxyPassword}
                       onChange={(e) => setProxyPassword(e.target.value)}
                     />
@@ -749,7 +751,7 @@ export function SystemSettings() {
                     className="px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-all text-sm font-medium flex items-center"
                   >
                     <i className="fas fa-vial mr-2"></i>
-                    测试连接
+                    {t('systemSettings.testConnection')}
                   </button>
                 </div>
               </div>
@@ -763,19 +765,19 @@ export function SystemSettings() {
             <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center mr-3">
               <i className="fas fa-lock"></i>
             </div>
-            <span className="font-medium">管理员密码</span>
+            <span className="font-medium">{t('systemSettings.adminPassword')}</span>
           </div>
           
           <div className="p-5 space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium dark:text-foreground/80 text-light-text-primary mb-1.5">
-                  当前密码
+                  {t('systemSettings.currentPassword')}
                 </label>
                 <input 
                   type="password" 
                   className="w-full px-4 py-3 rounded-lg border border-primary/20 bg-dark-card dark:bg-dark-card bg-light-card dark:text-foreground text-light-text-primary focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                  placeholder="输入当前密码"
+                  placeholder={t('systemSettings.currentPasswordPlaceholder')}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   required
@@ -785,12 +787,12 @@ export function SystemSettings() {
               <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className="block text-xs font-medium dark:text-foreground/80 text-light-text-primary mb-1.5">
-                    新密码
+                    {t('systemSettings.newPassword')}
                   </label>
                   <input 
                     type="password" 
                     className="w-full px-4 py-3 rounded-lg border border-primary/20 bg-dark-card dark:bg-dark-card bg-light-card dark:text-foreground text-light-text-primary focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                    placeholder="设置新密码"
+                    placeholder={t('systemSettings.newPasswordPlaceholder')}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
@@ -800,12 +802,12 @@ export function SystemSettings() {
                 
                 <div>
                   <label className="block text-xs font-medium dark:text-foreground/80 text-light-text-primary mb-1.5">
-                    确认新密码
+                    {t('systemSettings.confirmPassword')}
                   </label>
                   <input 
                     type="password" 
                     className="w-full px-4 py-3 rounded-lg border border-primary/20 bg-dark-card dark:bg-dark-card bg-light-card dark:text-foreground text-light-text-primary focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                    placeholder="再次输入新密码"
+                    placeholder={t('systemSettings.confirmPasswordPlaceholder')}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
@@ -825,7 +827,7 @@ export function SystemSettings() {
             {passwordSuccess && (
               <div className="bg-green-500/10 text-green-500 px-4 py-3 rounded-lg text-sm flex items-center">
                 <i className="fas fa-check-circle mr-2"></i>
-                密码已成功更新
+                {t('systemSettings.passwordUpdated')}
               </div>
             )}
             
@@ -836,7 +838,7 @@ export function SystemSettings() {
                 className="px-5 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all text-sm font-medium flex items-center shadow-sm shadow-primary/20 hover:shadow-md"
               >
                 <i className="fas fa-key mr-2"></i>
-                更新密码
+                {t('systemSettings.updatePassword')}
               </button>
             </div>
           </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useI18n } from "@/context/I18nContext";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -18,12 +19,13 @@ export function ConfirmDialog({
   isOpen,
   title,
   message,
-  confirmText = "确认",
-  cancelText = "取消",
+  confirmText,
+  cancelText,
   onConfirm,
   onCancel,
   isDestructive = false
 }: ConfirmDialogProps) {
+  const { t } = useI18n();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -62,7 +64,7 @@ export function ConfirmDialog({
               className="px-4 py-2 rounded-button border border-primary/20 hover:bg-primary/5 transition-colors"
               onClick={onCancel}
             >
-              {cancelText}
+              {cancelText || t('common.cancel')}
             </button>
             <button
               className={`px-4 py-2 rounded-button ${
@@ -72,7 +74,7 @@ export function ConfirmDialog({
               } transition-colors`}
               onClick={onConfirm}
             >
-              {confirmText}
+              {confirmText || t('common.confirm')}
             </button>
           </div>
         </div>

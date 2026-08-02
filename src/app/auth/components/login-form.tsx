@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
+import { useI18n } from '@/context/I18nContext';
 
 export default function LoginForm() {
+  const { t } = useI18n();
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,7 +21,7 @@ export default function LoginForm() {
     setError('');
 
     if (!login || !password) {
-      setError('请填写所有字段');
+      setError(t('auth.fillAllFields'));
       setLoading(false);
       return;
     }
@@ -44,7 +46,7 @@ export default function LoginForm() {
         // 例如: await incrementFailedAttempt(login);
         // 并在达到阈值时锁定账户
         
-        setError('账号或密码不正确');
+        setError(t('auth.invalidCredentials'));
         setLoading(false);
         return;
       }
@@ -58,7 +60,7 @@ export default function LoginForm() {
       window.location.href = '/dashboard';
     } catch (error) {
       console.error('登录错误', error);
-      setError('登录过程中发生错误');
+      setError(t('auth.loginError'));
       setLoading(false);
     }
   };
@@ -66,8 +68,8 @@ export default function LoginForm() {
   return (
     <div className="w-full max-w-md">
       <form onSubmit={handleSubmit} className="bg-card p-8 rounded-xl shadow-lg border border-purple-600/15">
-        <h2 className="text-2xl font-bold text-center mb-6 text-primary">欢迎回来</h2>
-        <p className="text-center mb-6 text-foreground text-sm">登录到您的账户</p>
+        <h2 className="text-2xl font-bold text-center mb-6 text-primary">{t('auth.welcomeBack')}</h2>
+        <p className="text-center mb-6 text-foreground text-sm">{t('auth.loginToAccount')}</p>
         
         {error && (
           <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-md text-red-500 text-sm">
@@ -77,7 +79,7 @@ export default function LoginForm() {
         
         <div className="mb-4">
           <label htmlFor="login" className="block mb-2 text-sm font-medium text-foreground">
-            账户名或邮箱
+            {t('auth.accountOrEmail')}
           </label>
           <input
             id="login"
@@ -92,14 +94,14 @@ export default function LoginForm() {
         <div className="mb-6">
           <div className="flex justify-between items-center mb-2">
             <label htmlFor="password" className="text-sm font-medium text-foreground">
-              密码
+              {t('auth.password')}
             </label>
             <button
               type="button"
               onClick={() => setShowForgotPassword(true)}
               className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
             >
-              忘记密码?
+              {t('auth.forgotPassword')}
             </button>
           </div>
           <input
@@ -119,10 +121,10 @@ export default function LoginForm() {
         >
           {loading ? (
             <span className="flex items-center justify-center">
-              <i className="fas fa-circle-notch fa-spin mr-2"></i> 登录中...
+              <i className="fas fa-circle-notch fa-spin mr-2"></i> {t('auth.loggingIn')}
             </span>
           ) : (
-            '登录'
+            t('auth.login')
           )}
         </button>
       </form>
@@ -134,7 +136,7 @@ export default function LoginForm() {
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-purple-300">
                 <i className="fas fa-info-circle mr-2"></i>
-                如何重置密码?
+                {t('auth.howToReset')}
               </h3>
               <button
                 onClick={() => setShowForgotPassword(false)}
@@ -145,26 +147,26 @@ export default function LoginForm() {
             </div>
 
             <div className="mb-4">
-              <p className="text-purple-300 font-medium mb-2">📦 Docker 安装方式：</p>
-              <p className="text-foreground mb-2 text-sm">在宿主机执行：</p>
+              <p className="text-purple-300 font-medium mb-2">{t('auth.dockerMethod')}</p>
+              <p className="text-foreground mb-2 text-sm">{t('auth.dockerHostHint')}</p>
               <div className="bg-dark-nav p-3 rounded-md border border-purple-600/20 text-xs font-mono mb-2">
                 <p className="text-green-400">docker exec -it coolmonitor node scripts/reset-password.js 用户名 "新密码123" </p>
               </div>
-              <p className="text-foreground mb-1 text-sm">或进入 Docker 容器内执行：</p>
+              <p className="text-foreground mb-1 text-sm">{t('auth.dockerContainerHint')}</p>
               <div className="bg-dark-nav p-3 rounded-md border border-purple-600/20 text-xs font-mono">
                 <p className="text-green-400">node scripts/reset-password.js 用户名 "新密码123"</p>
               </div>
             </div>
 
             <div className="mb-4">
-              <p className="text-purple-300 font-medium mb-2">💻 npm 安装方式：</p>
+              <p className="text-purple-300 font-medium mb-2">{t('auth.npmMethod')}</p>
               <div className="bg-dark-nav p-3 rounded-md border border-purple-600/20 text-xs font-mono">
                 <p className="text-green-400">node scripts/reset-password.js 用户名 "新密码123"</p>
               </div>
             </div>
 
             <div className="text-xs text-foreground mb-4">
-              💡 提示：如果不提供密码参数，系统会自动生成随机密码
+              {t('auth.resetHint')}
             </div>
 
             <div className="flex justify-end">
@@ -172,7 +174,7 @@ export default function LoginForm() {
                 onClick={() => setShowForgotPassword(false)}
                 className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm"
               >
-                关闭
+                {t('common.close')}
               </button>
             </div>
           </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import { useI18n } from "@/context/I18nContext";
 
 interface Monitor {
   id: string;
@@ -33,6 +34,7 @@ interface StatusPageData {
 export default function StatusPage() {
   const params = useParams();
   const slug = params?.slug as string;
+  const { t, locale } = useI18n();
   
   const [statusData, setStatusData] = useState<StatusPageData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,11 +52,11 @@ export default function StatusPage() {
         setStatusData(data);
       } else {
         const errorData = await response.json();
-        setError(errorData.error || '状态页不存在');
+        setError(errorData.error || t('statusPages.statusPageNotFound'));
       }
     } catch (error) {
       console.error('获取状态页数据失败:', error);
-      setError('获取状态页数据失败');
+      setError(t('statusPages.fetchFailed'));
     } finally {
       setLoading(false);
     }
@@ -79,10 +81,10 @@ export default function StatusPage() {
 
   // 获取状态显示文本
   const getStatusText = (monitor: Monitor) => {
-    if (!monitor.active) return "暂停";
-    if (monitor.status === 1) return "正常";
-    if (monitor.status === 0) return "故障";
-    return "未知";
+    if (!monitor.active) return t('status.paused');
+    if (monitor.status === 1) return t('status.up');
+    if (monitor.status === 0) return t('status.down');
+    return t('status.unknown');
   };
 
   // 获取状态样式类
@@ -103,21 +105,21 @@ export default function StatusPage() {
 
   // 格式化时间
   const formatTime = (dateString: string | null) => {
-    if (!dateString) return "暂无检查";
+    if (!dateString) return t('status.noCheck');
     
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
     
-    if (diffMinutes < 1) return "刚刚";
-    if (diffMinutes < 60) return `${diffMinutes}分钟前`;
+    if (diffMinutes < 1) return t('status.justNow');
+    if (diffMinutes < 60) return t('status.minutesAgo', { n: diffMinutes });
     
     const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours}小时前`;
+    if (diffHours < 24) return t('status.hoursAgo', { n: diffHours });
     
     const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}天前`;
+    return t('status.daysAgo', { n: diffDays });
   };
 
   if (loading) {
@@ -127,7 +129,7 @@ export default function StatusPage() {
           <div className="text-primary mb-4">
             <i className="fas fa-spinner fa-spin text-4xl"></i>
           </div>
-          <p className="text-foreground/60">加载状态页中...</p>
+          <p className="text-foreground/60">{t('statusPages.loadingStatusPage')}</p>
         </div>
       </div>
     );
@@ -140,7 +142,7 @@ export default function StatusPage() {
           <div className="text-error mb-4">
             <i className="fas fa-exclamation-triangle text-4xl"></i>
           </div>
-          <h1 className="text-xl font-semibold text-foreground mb-2">状态页不可用</h1>
+          <h1 className="text-xl font-semibold text-foreground mb-2">{t('statusPages.statusPageUnavailable')}</h1>
           <p className="text-foreground/60">{error}</p>
         </div>
       </div>
@@ -162,7 +164,7 @@ export default function StatusPage() {
             {statusData.title}
           </h1>
           <p className="text-foreground/60 text-lg">
-            实时监控系统状态
+            {t('statusPages.liveStatus')}
           </p>
         </div>
 
@@ -172,35 +174,35 @@ export default function StatusPage() {
             <div className="text-3xl font-bold text-foreground mb-2">
               {statusData.statistics.total}
             </div>
-            <div className="text-sm text-foreground/60">总计</div>
+            <div className="text-sm text-foreground/60">{t('statusPages.total')}</div>
           </div>
-          
+
           <div className="dark:bg-dark-card bg-light-card rounded-lg border border-primary/10 p-6 text-center">
             <div className="text-3xl font-bold text-success mb-2">
               {statusData.statistics.normal}
             </div>
-            <div className="text-sm text-foreground/60">正常</div>
+            <div className="text-sm text-foreground/60">{t('statusPages.normal')}</div>
           </div>
-          
+
           <div className="dark:bg-dark-card bg-light-card rounded-lg border border-primary/10 p-6 text-center">
             <div className="text-3xl font-bold text-error mb-2">
               {statusData.statistics.error}
             </div>
-            <div className="text-sm text-foreground/60">故障</div>
+            <div className="text-sm text-foreground/60">{t('statusPages.error')}</div>
           </div>
-          
+
           <div className="dark:bg-dark-card bg-light-card rounded-lg border border-primary/10 p-6 text-center">
             <div className="text-3xl font-bold text-warning mb-2">
               {statusData.statistics.paused}
             </div>
-            <div className="text-sm text-foreground/60">暂停</div>
+            <div className="text-sm text-foreground/60">{t('statusPages.paused')}</div>
           </div>
-          
+
           <div className="dark:bg-dark-card bg-light-card rounded-lg border border-primary/10 p-6 text-center">
             <div className="text-3xl font-bold text-primary mb-2">
               {statusData.statistics.uptime}%
             </div>
-            <div className="text-sm text-foreground/60">24小时可用性</div>
+            <div className="text-sm text-foreground/60">{t('statusPages.availability24h')}</div>
           </div>
         </div>
 
@@ -230,7 +232,7 @@ export default function StatusPage() {
               
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-foreground/60">最后检查:</span>
+                  <span className="text-foreground/60">{t('statusPages.lastCheck')}</span>
                   <span className="text-foreground/80">
                     {formatTime(monitor.lastCheckAt)}
                   </span>
@@ -243,8 +245,8 @@ export default function StatusPage() {
         {/* 底部信息 */}
         <div className="text-center mt-12 pt-8 border-t border-foreground/10">
           <p className="text-foreground/60 text-sm">
-            最后更新: {new Date(statusData.lastUpdated).toLocaleString('zh-CN')} • 
-            自动刷新: 30秒
+            {t('statusPages.lastUpdate', { time: new Date(statusData.lastUpdated).toLocaleString(locale === 'en' ? 'en-US' : 'zh-CN') })}{' '}
+            {t('statusPages.autoRefresh')}
           </p>
         </div>
       </div>

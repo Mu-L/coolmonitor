@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
+import { useI18n } from '@/context/I18nContext';
 
 export default function SetupForm() {
+  const { t } = useI18n();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -17,19 +19,19 @@ export default function SetupForm() {
 
     // 验证表单
     if (!username || !password || !confirmPassword) {
-      setError('请填写所有必填字段');
+      setError(t('auth.fillRequired'));
       setLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('两次输入的密码不一致');
+      setError(t('auth.passwordMismatch'));
       setLoading(false);
       return;
     }
 
     if (password.length < 6) {
-      setError('密码长度至少为6个字符');
+      setError(t('auth.passwordTooShort'));
       setLoading(false);
       return;
     }
@@ -48,7 +50,7 @@ export default function SetupForm() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || '系统初始化失败');
+        throw new Error(data.message || t('auth.initFailed'));
       }
 
       console.log("初始化成功，正在登录...");
@@ -63,7 +65,7 @@ export default function SetupForm() {
       console.log("登录结果:", result);
 
       if (result?.error) {
-        setError('自动登录失败，请尝试手动登录');
+        setError(t('auth.autoLoginFailed'));
         setLoading(false);
         return;
       }
@@ -76,7 +78,7 @@ export default function SetupForm() {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('系统初始化过程中发生错误');
+        setError(t('auth.initError'));
       }
       setLoading(false);
     }
@@ -94,38 +96,38 @@ export default function SetupForm() {
               </div>
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-primary">欢迎使用酷监控</h1>
-          <p className="text-xl text-foreground mt-2">系统初始化</p>
+          <h1 className="text-3xl font-bold text-primary">{t('auth.welcomeToCool')}</h1>
+          <p className="text-xl text-foreground mt-2">{t('auth.systemInit')}</p>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-4">
             <div className="bg-dark-nav/30 p-4 rounded-lg border border-purple-600/10">
-              <h3 className="text-lg font-medium text-primary mb-2">功能特点</h3>
+              <h3 className="text-lg font-medium text-primary mb-2">{t('auth.features')}</h3>
               <ul className="space-y-2 text-sm text-foreground/80">
                 <li className="flex items-center">
                   <span className="inline-block w-5 h-5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full mr-2 flex-shrink-0"></span>
-                  <span>高颜值的监控界面，专为长时间查看优化</span>
+                  <span>{t('auth.feature1')}</span>
                 </li>
                 <li className="flex items-center">
                   <span className="inline-block w-5 h-5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full mr-2 flex-shrink-0"></span>
-                  <span>支持网站和API接口监控</span>
+                  <span>{t('auth.feature2')}</span>
                 </li>
                 <li className="flex items-center">
                   <span className="inline-block w-5 h-5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full mr-2 flex-shrink-0"></span>
-                  <span>多种通知方式，及时响应异常</span>
+                  <span>{t('auth.feature3')}</span>
                 </li>
                 <li className="flex items-center">
                   <span className="inline-block w-5 h-5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full mr-2 flex-shrink-0"></span>
-                  <span>丰富的数据分析和报表功能</span>
+                  <span>{t('auth.feature4')}</span>
                 </li>
               </ul>
             </div>
             
             <div className="bg-dark-nav/30 p-4 rounded-lg border border-purple-600/10">
-              <h3 className="text-lg font-medium text-primary mb-2">系统要求</h3>
+              <h3 className="text-lg font-medium text-primary mb-2">{t('auth.systemRequirements')}</h3>
               <p className="text-sm text-foreground/80">
-                本系统为单用户应用，您现在创建的账户将成为系统管理员，拥有全部权限。初始化完成后，您可以立即开始配置监控项。
+                {t('auth.systemRequirementsDesc')}
               </p>
             </div>
           </div>
@@ -140,7 +142,7 @@ export default function SetupForm() {
               
               <div className="mb-4">
                 <label htmlFor="username" className="block mb-2 text-sm font-medium text-foreground">
-                  管理员账户名 <span className="text-red-500">*</span>
+                  {t('auth.adminAccount')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="username"
@@ -154,7 +156,7 @@ export default function SetupForm() {
               
               <div className="mb-4">
                 <label htmlFor="password" className="block mb-2 text-sm font-medium text-foreground">
-                  密码 <span className="text-red-500">*</span>
+                  {t('auth.password')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="password"
@@ -168,7 +170,7 @@ export default function SetupForm() {
               
               <div className="mb-6">
                 <label htmlFor="confirmPassword" className="block mb-2 text-sm font-medium text-foreground">
-                  确认密码 <span className="text-red-500">*</span>
+                  {t('auth.confirmPassword')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="confirmPassword"
@@ -187,10 +189,10 @@ export default function SetupForm() {
               >
                 {loading ? (
                   <span className="flex items-center justify-center">
-                    <i className="fas fa-circle-notch fa-spin mr-2"></i> 正在初始化...
+                    <i className="fas fa-circle-notch fa-spin mr-2"></i> {t('auth.initializing')}
                   </span>
                 ) : (
-                  '开始使用酷监控'
+                  t('auth.startUsing')
                 )}
               </button>
             </form>
@@ -199,7 +201,7 @@ export default function SetupForm() {
       </div>
       
       <div className="text-center mt-6 text-foreground/60 text-sm">
-        <p>酷监控 · 高颜值的网站和接口监控工具</p>
+        <p>{t('auth.footer')}</p>
       </div>
     </div>
   );

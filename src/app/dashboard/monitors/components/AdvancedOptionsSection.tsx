@@ -1,5 +1,8 @@
+"use client";
+
 import { Dispatch, SetStateAction } from "react";
 import { HttpAuthSection } from "./HttpAuthSection";
+import { useI18n } from "@/context/I18nContext";
 
 interface AdvancedOptionsSectionProps {
   monitorType: string;
@@ -44,6 +47,7 @@ export function AdvancedOptionsSection({
   notifyCertExpiry,
   setNotifyCertExpiry
 }: AdvancedOptionsSectionProps) {
+  const { t } = useI18n();
   return (
     <div className="space-y-6">
       {/* HTTP认证选项 */}
@@ -58,12 +62,12 @@ export function AdvancedOptionsSection({
       {/* HTTP选项 */}
       {(monitorType === "http" || monitorType === "keyword") && (
         <div className="p-5 border border-primary/10 rounded-lg">
-          <h3 className="text-lg font-medium mb-4 text-primary">HTTP/HTTPS 选项</h3>
+          <h3 className="text-lg font-medium mb-4 text-primary">{t('monitorForm.httpOptions')}</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* 方法 */}
             <div className="space-y-2">
-              <label className="block text-foreground/80 font-medium">请求方法</label>
+              <label className="block text-foreground/80 font-medium">{t('monitorForm.requestMethod')}</label>
               <select
                 value={httpMethod}
                 onChange={(e) => setHttpMethod(e.target.value)}
@@ -81,22 +85,22 @@ export function AdvancedOptionsSection({
             
             {/* 有效状态码 */}
             <div className="space-y-2">
-              <label className="block text-foreground/80 font-medium">有效状态码</label>
+              <label className="block text-foreground/80 font-medium">{t('monitorForm.validStatusCodes')}</label>
               <input
                 type="text"
                 value={statusCodes}
                 onChange={(e) => setStatusCodes(e.target.value)}
-                placeholder="例如：200 或 200-299"
+                placeholder={t('monitorForm.statusCodesPlaceholder')}
                 className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none"
               />
               <p className="text-xs text-foreground/50">
-                可以是单个状态码（如200）或范围（如200-299）
+                {t('monitorForm.statusCodesHint')}
               </p>
             </div>
             
             {/* 连接超时 */}
             <div className="space-y-2">
-              <label className="block text-foreground/80 font-medium">连接超时 (秒)</label>
+              <label className="block text-foreground/80 font-medium">{t('monitorForm.connectTimeout')}</label>
               <input
                 type="number"
                 value={connectTimeout}
@@ -107,7 +111,7 @@ export function AdvancedOptionsSection({
                 className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none"
               />
               <p className="text-xs text-foreground/50">
-                请求超时时间，范围：1-300秒
+                {t('monitorForm.connectTimeoutHint')}
               </p>
             </div>
           </div>
@@ -116,27 +120,27 @@ export function AdvancedOptionsSection({
             {/* 请求体 */}
             {httpMethod !== "GET" && httpMethod !== "HEAD" && (
               <div className="space-y-2">
-                <label className="block text-foreground/80 font-medium">请求体</label>
+                <label className="block text-foreground/80 font-medium">{t('monitorForm.requestBody')}</label>
                 <textarea
                   value={requestBody}
                   onChange={(e) => setRequestBody(e.target.value)}
                   className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none h-24 font-mono text-sm"
-                  placeholder={'例如：\n{\n  "key": "value"\n}'}
+                  placeholder={t('monitorForm.requestBodyPlaceholder')}
                 ></textarea>
               </div>
             )}
             
             {/* 请求头 */}
             <div className="space-y-2">
-              <label className="block text-foreground/80 font-medium">自定义请求头</label>
+              <label className="block text-foreground/80 font-medium">{t('monitorForm.customHeaders')}</label>
               <textarea
                 value={requestHeaders}
                 onChange={(e) => setRequestHeaders(e.target.value)}
                 className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none h-24 font-mono text-sm"
-                placeholder={'例如：\n{\n  "X-Custom-Header": "custom-value",\n  "Content-Type": "application/json"\n}'}
+                placeholder={t('monitorForm.customHeadersPlaceholder')}
               ></textarea>
               <p className="text-xs text-foreground/50">
-                支持JSON格式的自定义请求头。HTTP认证请使用上方的"HTTP认证"功能。
+                {t('monitorForm.customHeadersHint')}
               </p>
             </div>
             
@@ -150,10 +154,10 @@ export function AdvancedOptionsSection({
                 className="w-4 h-4 text-primary border-primary/30 focus:ring-primary"
               />
               <label htmlFor="notifyCertExpiry" className="text-foreground/80">
-                证书到期时通知
+                {t('monitorForm.notifyCertExpiry')}
               </label>
             </div>
-            <p className="text-xs text-foreground/50 pl-6">监控HTTPS网址时同时检查SSL证书有效性，避免配置单独的证书监控</p>
+            <p className="text-xs text-foreground/50 pl-6">{t('monitorForm.notifyCertExpiryHint')}</p>
           </div>
         </div>
       )}
@@ -161,9 +165,9 @@ export function AdvancedOptionsSection({
       {/* HTTPS证书选项 */}
       {monitorType === "https-cert" && (
         <div className="p-5 border border-primary/10 rounded-lg">
-          <h3 className="text-lg font-medium mb-4 text-primary">HTTPS 证书监控</h3>
+          <h3 className="text-lg font-medium mb-4 text-primary">{t('monitorForm.httpsCertTitle')}</h3>
           <p className="text-sm text-foreground/70 mb-4">
-            HTTPS证书监控会定期检查HTTPS证书的有效性，并在证书失效前发出警告。
+            {t('monitorForm.httpsCertDesc')}
           </p>
         </div>
       )}
@@ -171,12 +175,12 @@ export function AdvancedOptionsSection({
       {/* ICMP Ping选项 */}
       {monitorType === "icmp" && (
         <div className="p-5 border border-primary/10 rounded-lg">
-          <h3 className="text-lg font-medium mb-4 text-primary">ICMP Ping 选项</h3>
+          <h3 className="text-lg font-medium mb-4 text-primary">{t('monitorForm.icmpOptions')}</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Ping包数量 */}
             <div className="space-y-2">
-              <label className="block text-foreground/80 font-medium">Ping包数量</label>
+              <label className="block text-foreground/80 font-medium">{t('monitorForm.pingCount')}</label>
               <select
                 className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none"
                 defaultValue="4"
@@ -187,24 +191,24 @@ export function AdvancedOptionsSection({
                 <option value="16">16</option>
               </select>
               <p className="text-xs text-foreground/50">
-                每次检查发送的Ping包数量
+                {t('monitorForm.pingCountHint')}
               </p>
             </div>
             
             {/* 最大允许丢包率 */}
             <div className="space-y-2">
-              <label className="block text-foreground/80 font-medium">最大允许丢包率 (%)</label>
+              <label className="block text-foreground/80 font-medium">{t('monitorForm.maxPacketLoss')}</label>
               <select
                 className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none"
                 defaultValue="0"
               >
-                <option value="0">0% (不允许丢包)</option>
+                <option value="0">{t('monitorForm.noPacketLoss')}</option>
                 <option value="25">25%</option>
                 <option value="50">50%</option>
                 <option value="75">75%</option>
               </select>
               <p className="text-xs text-foreground/50">
-                超过此丢包率将被视为故障
+                {t('monitorForm.maxPacketLossHint')}
               </p>
             </div>
           </div>
@@ -212,15 +216,15 @@ export function AdvancedOptionsSection({
           <div className="mt-6">
             {/* 最大响应时间 */}
             <div className="space-y-2">
-              <label className="block text-foreground/80 font-medium">最大响应时间 (ms)</label>
+              <label className="block text-foreground/80 font-medium">{t('monitorForm.maxResponseTime')}</label>
               <input
                 type="number"
-                placeholder="例如：500 (留空表示不限制)"
+                placeholder={t('monitorForm.maxResponseTimePlaceholder')}
                 className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none"
                 min="1"
               />
               <p className="text-xs text-foreground/50">
-                超过此响应时间将被视为故障 (留空表示不限制)
+                {t('monitorForm.maxResponseTimeHint')}
               </p>
             </div>
           </div>
@@ -229,7 +233,7 @@ export function AdvancedOptionsSection({
       
       {/* 高级选项 */}
       <div className="p-5 border border-primary/10 rounded-lg">
-        <h3 className="text-lg font-medium mb-4 text-primary">高级选项</h3>
+        <h3 className="text-lg font-medium mb-4 text-primary">{t('monitorForm.advancedOptions')}</h3>
         
         <div className="space-y-4">
           {/* TLS/SSL 选项 - 仅适用于 HTTP/HTTPS 和关键字监控 */}
@@ -243,9 +247,9 @@ export function AdvancedOptionsSection({
                 className="w-4 h-4 text-primary border-primary/30 focus:ring-primary"
               />
               <label htmlFor="ignoreTls" className="text-foreground/80">
-                {monitorType === "https-cert" 
-                  ? "忽略证书验证错误（不推荐）" 
-                  : "忽略 HTTPS 站点的 TLS/SSL 错误"}
+                {monitorType === "https-cert"
+                  ? t('monitorForm.ignoreTlsCert')
+                  : t('monitorForm.ignoreTlsHttp')}
               </label>
             </div>
           )}
@@ -259,15 +263,15 @@ export function AdvancedOptionsSection({
               className="w-4 h-4 text-primary border-primary/30 focus:ring-primary"
             />
             <label htmlFor="upsideDown" className="text-foreground/80">
-              反转模式
+              {t('monitorForm.upsideDown')}
             </label>
           </div>
-          <p className="text-xs text-foreground/50 pl-6">反转状态监控，如果服务可访问，则认为故障</p>
+          <p className="text-xs text-foreground/50 pl-6">{t('monitorForm.upsideDownHint')}</p>
           
           {/* 最大重定向次数 */}
           {(monitorType === "http" || monitorType === "keyword" || monitorType === "https-cert") && (
             <div className="mt-4 md:w-1/2">
-              <label className="block text-foreground/80 font-medium mb-2">最大重定向次数</label>
+              <label className="block text-foreground/80 font-medium mb-2">{t('monitorForm.maxRedirects')}</label>
               <input
                 type="number"
                 value={maxRedirects}
@@ -275,11 +279,11 @@ export function AdvancedOptionsSection({
                 className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none"
                 min="0"
               />
-              <p className="text-xs text-foreground/50 mt-1">设置为 0 禁用重定向</p>
+              <p className="text-xs text-foreground/50 mt-1">{t('monitorForm.maxRedirectsHint')}</p>
             </div>
           )}
         </div>
       </div>
     </div>
   );
-} 
+}

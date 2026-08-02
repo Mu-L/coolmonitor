@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { createPortal } from "react-dom";
+import { useI18n } from "@/context/I18nContext";
 import { BasicInfoSection } from "./components/BasicInfoSection";
 import { MonitorSettingsSection } from "./components/MonitorSettingsSection";
 import { NotificationSection } from "./components/NotificationSection";
@@ -44,6 +45,7 @@ interface MonitorFormProps {
 }
 
 export function MonitorForm({ isOpen, onClose, editMode = false, initialData = null }: MonitorFormProps) {
+  const { t } = useI18n();
   // 基本信息
   const [activeTab, setActiveTab] = useState<'basic' | 'notification' | 'advanced' | 'script'>('basic');
   const [monitorType, setMonitorType] = useState("http");
@@ -189,40 +191,40 @@ export function MonitorForm({ isOpen, onClose, editMode = false, initialData = n
     
     // 验证表单
     if (!name.trim()) {
-      setFormError("监控名称不能为空");
+      setFormError(t('monitorForm.errNameEmpty'));
       return;
     }
     
     if ((monitorType === "http" || monitorType === "keyword" || monitorType === "https-cert") && !url.trim()) {
-      setFormError("URL不能为空");
+      setFormError(t('monitorForm.errUrlEmpty'));
       return;
     }
     
     // HTTPS证书检查
     if (monitorType === "https-cert" && !url.trim().startsWith("https://")) {
-      setFormError("HTTPS证书监控必须使用HTTPS URL（以https://开头）");
+      setFormError(t('monitorForm.errHttpsUrl'));
       return;
     }
     
     if (["port", "mysql", "redis"].includes(monitorType)) {
       if (!hostname.trim()) {
-        setFormError("主机名不能为空");
+        setFormError(t('monitorForm.errHostEmpty'));
         return;
       }
       
       if (!port.trim() || isNaN(parseInt(port))) {
-        setFormError("端口必须是有效的数字");
+        setFormError(t('monitorForm.errPortInvalid'));
         return;
       }
     }
     
     if (monitorType === "icmp" && !hostname.trim()) {
-      setFormError("主机名不能为空");
+      setFormError(t('monitorForm.errHostEmpty'));
       return;
     }
     
     if (monitorType === "keyword" && !keyword.trim()) {
-      setFormError("关键字不能为空");
+      setFormError(t('monitorForm.errKeywordEmpty'));
       return;
     }
     
@@ -299,11 +301,11 @@ export function MonitorForm({ isOpen, onClose, editMode = false, initialData = n
       if (!response.ok) {
         // 获取错误信息
         const errorData = await response.json();
-        throw new Error(errorData.error || `${editMode ? '更新' : '创建'}监控项失败`);
+        throw new Error(errorData.error || (editMode ? t('monitorForm.updateFailed') : t('monitorForm.createFailed')));
       }
       
       // 显示成功消息
-      toast.success(`监控项${editMode ? '更新' : '创建'}成功`);
+      toast.success(editMode ? t('monitorForm.updateSuccess') : t('monitorForm.createSuccess'));
       
       // 关闭表单
       onClose();
@@ -317,7 +319,7 @@ export function MonitorForm({ isOpen, onClose, editMode = false, initialData = n
       if (error instanceof Error) {
         setFormError(error.message);
       } else {
-        setFormError(`${editMode ? '更新' : '创建'}监控项失败，请稍后重试`);
+        setFormError(editMode ? t('monitorForm.updateFailed') : t('monitorForm.createFailed'));
       }
     } finally {
       setIsSubmitting(false);
@@ -331,7 +333,7 @@ export function MonitorForm({ isOpen, onClose, editMode = false, initialData = n
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center overflow-y-auto">
       <div className="dark:bg-dark-card bg-light-card rounded-lg border border-primary/15 shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 z-10 dark:bg-dark-card bg-light-card border-b border-primary/10 px-6 py-4 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-foreground">{editMode ? '编辑' : '添加'}监控项</h2>
+          <h2 className="text-xl font-bold text-foreground">{editMode ? t('monitorForm.editTitle') : t('monitorForm.addTitle')}</h2>
           <button 
             onClick={onClose}
             className="text-foreground/70 hover:text-foreground"
@@ -348,7 +350,7 @@ export function MonitorForm({ isOpen, onClose, editMode = false, initialData = n
               : 'text-foreground/70 hover:text-foreground'}`}
             onClick={() => setActiveTab('basic')}
           >
-            基础设置
+            {t('monitorForm.tabBasic')}
           </button>
           <button
             className={`px-6 py-3 ${activeTab === 'notification' 
@@ -356,7 +358,7 @@ export function MonitorForm({ isOpen, onClose, editMode = false, initialData = n
               : 'text-foreground/70 hover:text-foreground'}`}
             onClick={() => setActiveTab('notification')}
           >
-            通知设置
+            {t('monitorForm.tabNotification')}
           </button>
           <button
             className={`px-6 py-3 ${activeTab === 'advanced' 
@@ -364,7 +366,7 @@ export function MonitorForm({ isOpen, onClose, editMode = false, initialData = n
               : 'text-foreground/70 hover:text-foreground'}`}
             onClick={() => setActiveTab('advanced')}
           >
-            高级选项
+            {t('monitorForm.tabAdvanced')}
           </button>
           <button
             className={`px-6 py-3 ${activeTab === 'script' 
@@ -372,7 +374,7 @@ export function MonitorForm({ isOpen, onClose, editMode = false, initialData = n
               : 'text-foreground/70 hover:text-foreground'}`}
             onClick={() => setActiveTab('script')}
           >
-            脚本动作
+            {t('monitorForm.tabScript')}
           </button>
         </div>
           
@@ -489,14 +491,13 @@ export function MonitorForm({ isOpen, onClose, editMode = false, initialData = n
               ) : (
                 <div className="dark:bg-dark-card bg-light-card rounded-lg border border-primary/15 p-8 text-center">
                   <i className="fas fa-code text-primary text-4xl mb-4"></i>
-                  <h3 className="text-lg font-medium mb-2">自定义脚本动作</h3>
+                  <h3 className="text-lg font-medium mb-2">{t('monitorForm.scriptActionTitle')}</h3>
                   <p className="text-sm text-foreground/60 max-w-md mx-auto leading-relaxed">
-                    当监控状态变化（UP↔DOWN）时，可自动执行你配置的 Node.js 脚本，
-                    实现自动化故障响应，例如切换 DNS、重启服务、调用 API 等。
+                    {t('monitorForm.scriptActionPlaceholderDesc')}
                   </p>
                   <p className="text-sm text-warning mt-4">
                     <i className="fas fa-info-circle mr-1"></i>
-                    请先保存监控项，再回来配置脚本动作
+                    {t('monitorForm.scriptSaveFirst')}
                   </p>
                 </div>
               )
@@ -512,7 +513,7 @@ export function MonitorForm({ isOpen, onClose, editMode = false, initialData = n
             className="px-6 py-2 border border-primary/30 rounded-button text-foreground hover:bg-primary/5 transition-colors"
               disabled={isSubmitting}
           >
-            取消
+            {t('common.cancel')}
           </button>
             <button 
               type="submit"
@@ -522,9 +523,9 @@ export function MonitorForm({ isOpen, onClose, editMode = false, initialData = n
               {isSubmitting ? (
                 <>
                   <i className="fas fa-circle-notch fa-spin mr-2"></i>
-                  保存中...
+                  {t('common.saving')}
                 </>
-              ) : '保存'}
+              ) : t('common.save')}
           </button>
         </div>
         )}

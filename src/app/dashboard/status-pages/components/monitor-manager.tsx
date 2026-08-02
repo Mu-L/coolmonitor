@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useI18n } from "@/context/I18nContext";
 
 interface Monitor {
   id: string;
@@ -25,6 +26,7 @@ interface MonitorManagerProps {
 }
 
 export function MonitorManager({ statusPageId, statusPageName, onClose }: MonitorManagerProps) {
+  const { t } = useI18n();
   const [monitors, setMonitors] = useState<Monitor[]>([]);
   const [statusPageMonitors, setStatusPageMonitors] = useState<StatusPageMonitor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,11 +92,11 @@ export function MonitorManager({ statusPageId, statusPageName, onClose }: Monito
         setDisplayName('');
       } else {
         const error = await response.json();
-        alert(`添加监控项失败: ${error.error}`);
+        alert(t('statusPages.addFailed') + ': ' + error.error);
       }
     } catch (error) {
       console.error('添加监控项失败:', error);
-      alert('添加监控项失败');
+      alert(t('statusPages.addFailed'));
     } finally {
       setAddingMonitor(false);
     }
@@ -102,7 +104,7 @@ export function MonitorManager({ statusPageId, statusPageName, onClose }: Monito
 
   // 从状态页移除监控项
   const removeMonitorFromStatusPage = async (monitorId: string) => {
-    if (!confirm('确定要移除此监控项吗？')) return;
+    if (!confirm(t('statusPages.removeConfirm'))) return;
 
     try {
       const response = await fetch(`/api/status-pages/${statusPageId}/monitors/${monitorId}`, {
@@ -113,11 +115,11 @@ export function MonitorManager({ statusPageId, statusPageName, onClose }: Monito
         await fetchStatusPageMonitors();
       } else {
         const error = await response.json();
-        alert(`移除监控项失败: ${error.error}`);
+        alert(t('statusPages.removeFailed') + ': ' + error.error);
       }
     } catch (error) {
       console.error('移除监控项失败:', error);
-      alert('移除监控项失败');
+      alert(t('statusPages.removeFailed'));
     }
   };
 
@@ -142,7 +144,7 @@ export function MonitorManager({ statusPageId, statusPageName, onClose }: Monito
       case 'http':
       case 'https-cert':
       case 'keyword':
-        return monitor.url || '未知URL';
+        return monitor.url || t('statusPages.unknownUrl');
       case 'port':
         return `${monitor.host}:${monitor.port}`;
       case 'mysql':
@@ -159,7 +161,7 @@ export function MonitorManager({ statusPageId, statusPageName, onClose }: Monito
         <div className="dark:bg-dark-card bg-light-card rounded-lg p-6">
           <div className="flex items-center space-x-3">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-            <span>加载中...</span>
+            <span>{t('common.loading')}</span>
           </div>
         </div>
       </div>
@@ -176,7 +178,7 @@ export function MonitorManager({ statusPageId, statusPageName, onClose }: Monito
       <div className="dark:bg-dark-card bg-light-card rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-foreground">
-            管理状态页监控项 - {statusPageName}
+            {t('statusPages.manageTitle', { name: statusPageName })}
           </h2>
           <button
             onClick={onClose}
@@ -188,22 +190,22 @@ export function MonitorManager({ statusPageId, statusPageName, onClose }: Monito
 
         {/* 添加监控项区域 */}
         <div className="mb-6 p-4 border border-primary/20 rounded-lg">
-          <h3 className="text-lg font-medium text-foreground mb-4">添加监控项</h3>
-          
+          <h3 className="text-lg font-medium text-foreground mb-4">{t('statusPages.addMonitors')}</h3>
+
           {availableMonitors.length === 0 ? (
-            <p className="text-foreground/60">所有监控项已添加到状态页</p>
+            <p className="text-foreground/60">{t('statusPages.allAdded')}</p>
           ) : (
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
-                  选择监控项
+                  {t('statusPages.selectMonitors')}
                 </label>
                                       <select
                         value={selectedMonitorId}
                         onChange={(e) => setSelectedMonitorId(e.target.value)}
                         className="w-full px-3 py-2 border border-primary/20 rounded-lg dark:bg-dark-nav bg-light-nav text-foreground focus:border-primary focus:outline-none"
                       >
-                        <option value="" className="text-foreground">请选择监控项</option>
+                        <option value="" className="text-foreground">{t('statusPages.selectMonitor')}</option>
                         {availableMonitors.map((monitor) => (
                           <option key={monitor.id} value={monitor.id} className="text-foreground">
                             {monitor.name} ({getMonitorTypeName(monitor.type)})
@@ -214,13 +216,13 @@ export function MonitorManager({ statusPageId, statusPageName, onClose }: Monito
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
-                  显示名称（可选）
+                  {t('statusPages.displayNameOpt')}
                 </label>
                 <input
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="留空则使用原名称"
+                  placeholder={t('statusPages.displayNamePlaceholder')}
                                           className="w-full px-3 py-2 border border-primary/20 rounded-lg dark:bg-dark-nav bg-light-nav text-foreground focus:border-primary focus:outline-none"
                 />
               </div>
@@ -230,7 +232,7 @@ export function MonitorManager({ statusPageId, statusPageName, onClose }: Monito
                 disabled={!selectedMonitorId || addingMonitor}
                 className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {addingMonitor ? '添加中...' : '添加监控项'}
+                {addingMonitor ? t('statusPages.adding') : t('statusPages.addMonitorBtn')}
               </button>
             </div>
           )}
@@ -238,10 +240,10 @@ export function MonitorManager({ statusPageId, statusPageName, onClose }: Monito
 
         {/* 已添加的监控项列表 */}
         <div>
-          <h3 className="text-lg font-medium text-foreground mb-4">已添加的监控项</h3>
-          
+          <h3 className="text-lg font-medium text-foreground mb-4">{t('statusPages.addedMonitors')}</h3>
+
           {statusPageMonitors.length === 0 ? (
-            <p className="text-foreground/60">还没有添加任何监控项</p>
+            <p className="text-foreground/60">{t('statusPages.noAddedMonitors')}</p>
           ) : (
             <div className="space-y-3">
               {statusPageMonitors.map((spm, index) => (
@@ -269,7 +271,7 @@ export function MonitorManager({ statusPageId, statusPageName, onClose }: Monito
                   <button
                     onClick={() => removeMonitorFromStatusPage(spm.monitorId)}
                     className="text-error hover:text-error/80 transition-colors ml-4"
-                    title="移除"
+                    title={t('statusPages.remove')}
                   >
                     <i className="fas fa-trash"></i>
                   </button>

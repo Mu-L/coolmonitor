@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Header } from "@/components/header";
 import { StatusPageList } from "./components/status-page-list";
 import { StatusPageForm } from "./components/status-page-form";
+import { useI18n } from "@/context/I18nContext";
 
 interface StatusPage {
   id: string;
@@ -21,6 +22,7 @@ interface StatusPage {
 }
 
 export default function StatusPagesPage() {
+  const { t } = useI18n();
   const [statusPages, setStatusPages] = useState<StatusPage[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -58,7 +60,7 @@ export default function StatusPagesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除这个状态页吗？')) {
+    if (!confirm(t('statusPages.deleteConfirm'))) {
       return;
     }
 
@@ -71,11 +73,11 @@ export default function StatusPagesPage() {
         fetchStatusPages();
       } else {
         const error = await response.json();
-        alert(`删除失败: ${error.error}`);
+        alert(t('statusPages.deleteFailed') + ': ' + error.error);
       }
     } catch (error) {
       console.error('删除状态页失败:', error);
-      alert('删除状态页失败');
+      alert(t('statusPages.deleteFailedTitle'));
     }
   };
 
@@ -94,11 +96,11 @@ export default function StatusPagesPage() {
                   className="inline-flex items-center px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors border border-primary/20"
                 >
                   <i className="fas fa-arrow-left mr-2"></i>
-                  返回监控面板
+                  {t('statusPages.backToDashboard')}
                 </a>
                 <div>
-                  <h1 className="text-3xl font-bold text-foreground">状态页管理</h1>
-                  <p className="text-foreground/60 mt-2">管理您的公开状态页面</p>
+                  <h1 className="text-3xl font-bold text-foreground">{t('statusPages.title')}</h1>
+                  <p className="text-foreground/60 mt-2">{t('statusPages.hint')}</p>
                 </div>
               </div>
               <button
@@ -106,7 +108,7 @@ export default function StatusPagesPage() {
                 className="bg-primary hover:bg-primary/90 text-white px-6 py-2 rounded-lg transition-colors"
               >
                 <i className="fas fa-plus mr-2"></i>
-                创建状态页
+                {t('statusPages.createStatusPage')}
               </button>
             </div>
 
@@ -114,7 +116,7 @@ export default function StatusPagesPage() {
               <div className="flex items-center justify-center h-64">
                 <div className="text-primary">
                   <i className="fas fa-spinner fa-spin mr-2"></i>
-                  加载中...
+                  {t('statusPages.loading')}
                 </div>
               </div>
             ) : (

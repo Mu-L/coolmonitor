@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { formatDateTime as formatDateTimeUtil } from '@/lib/monitors/utils';
+import { useI18n } from '@/context/I18nContext';
 
 interface LoginRecord {
   id: string;
@@ -19,6 +20,7 @@ interface PaginationData {
 }
 
 export default function LoginRecordsTable() {
+  const { t } = useI18n();
   const [records, setRecords] = useState<LoginRecord[]>([]);
   const [pagination, setPagination] = useState<PaginationData>({
     total: 0,
@@ -38,7 +40,7 @@ export default function LoginRecordsTable() {
       const response = await fetch(`/api/user/login-records?page=${page}&limit=${limit}`);
       
       if (!response.ok) {
-        throw new Error('获取登录记录失败');
+        throw new Error(t('loginRecords.fetchFailed'));
       }
       
       const data = await response.json();
@@ -47,10 +49,10 @@ export default function LoginRecordsTable() {
         setRecords(data.data.records);
         setPagination(data.data.pagination);
       } else {
-        setError(data.error || '获取登录记录失败');
+        setError(data.error || t('loginRecords.fetchFailed'));
       }
     } catch (err) {
-      setError('获取登录记录时发生错误');
+      setError(t('loginRecords.fetchError'));
       console.error('加载登录记录错误:', err);
     } finally {
       setLoading(false);
@@ -70,14 +72,14 @@ export default function LoginRecordsTable() {
 
   // 获取设备类型
   const getDeviceType = (userAgent: string) => {
-    if (!userAgent || userAgent === '未知') return '未知设备';
+    if (!userAgent || userAgent === '未知') return t('loginRecords.unknownDevice');
     
     if (userAgent.includes('Mobile') || userAgent.includes('Android') || userAgent.includes('iPhone')) {
-      return '移动设备';
+      return t('loginRecords.mobile');
     } else if (userAgent.includes('iPad') || userAgent.includes('Tablet')) {
-      return '平板设备';
+      return t('loginRecords.tablet');
     } else {
-      return '桌面设备';
+      return t('loginRecords.desktop');
     }
   };
 
@@ -95,7 +97,7 @@ export default function LoginRecordsTable() {
     return (
       <div className="flex justify-center items-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
-        <span className="ml-2">加载中...</span>
+        <span className="ml-2">{t('loginRecords.loading')}</span>
       </div>
     );
   }
@@ -108,7 +110,7 @@ export default function LoginRecordsTable() {
           onClick={() => loadRecords(pagination.currentPage, pagination.pageSize)}
           className="mt-2 px-4 py-2 bg-red-100 dark:bg-red-800/30 rounded-md hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors"
         >
-          重试
+          {t('loginRecords.retry')}
         </button>
       </div>
     );
@@ -117,7 +119,7 @@ export default function LoginRecordsTable() {
   if (records.length === 0) {
     return (
       <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-8 text-center">
-        <p className="text-gray-500 dark:text-gray-400">暂无登录记录</p>
+        <p className="text-gray-500 dark:text-gray-400">{t('loginRecords.noRecords')}</p>
       </div>
     );
   }
@@ -129,16 +131,16 @@ export default function LoginRecordsTable() {
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                登录时间
+                {t('loginRecords.loginTime')}
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                状态
+                {t('loginRecords.statusCol')}
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                IP地址
+                {t('loginRecords.ipAddress')}
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                设备类型
+                {t('loginRecords.deviceType')}
               </th>
             </tr>
           </thead>
@@ -151,11 +153,11 @@ export default function LoginRecordsTable() {
                 <td className="px-6 py-4 whitespace-nowrap">
                   {record.success ? (
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
-                      成功
+                      {t('loginRecords.successStatus')}
                     </span>
                   ) : (
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400">
-                      失败
+                      {t('loginRecords.failedStatus')}
                     </span>
                   )}
                 </td>
@@ -175,7 +177,7 @@ export default function LoginRecordsTable() {
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between mt-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            共 {pagination.total} 条记录，第 {pagination.currentPage} / {pagination.totalPages} 页
+            {t('loginRecords.totalRecords', { total: pagination.total, current: pagination.currentPage, pages: pagination.totalPages })}
           </div>
           <div className="flex space-x-2">
             <button
@@ -183,14 +185,14 @@ export default function LoginRecordsTable() {
               disabled={pagination.currentPage === 1}
               className="px-3 py-1 border border-gray-300 dark:border-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
-              上一页
+              {t('loginRecords.prevPage')}
             </button>
             <button
               onClick={() => handlePageChange(pagination.currentPage + 1)}
               disabled={pagination.currentPage === pagination.totalPages}
               className="px-3 py-1 border border-gray-300 dark:border-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
-              下一页
+              {t('loginRecords.nextPage')}
             </button>
           </div>
         </div>

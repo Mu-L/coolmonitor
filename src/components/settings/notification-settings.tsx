@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { useI18n } from "@/context/I18nContext";
 
 type NotificationType = "邮件" | "Webhook" | "微信推送" | "钉钉推送" | "企业微信推送";
 
@@ -19,12 +20,25 @@ interface NotificationSettingsProps {
 }
 
 export function NotificationSettings({ onNotificationChange }: NotificationSettingsProps) {
+  const { t } = useI18n();
   const [notifications, setNotifications] = useState<NotificationConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [currentEditingNotification, setCurrentEditingNotification] = useState<NotificationConfig | null>(null);
   const [selectedType, setSelectedType] = useState<NotificationType>("邮件");
   const [notificationName, setNotificationName] = useState<string>("");
+
+  // 通知类型显示标签（仅用于展示，匹配仍使用原始中文值）
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case '邮件': return t('notifications.email');
+      case 'Webhook': return t('notifications.webhook');
+      case '微信推送': return t('notifications.wechat');
+      case '钉钉推送': return t('notifications.dingtalk');
+      case '企业微信推送': return t('notifications.workWechat');
+      default: return type;
+    }
+  };
   
   // 从服务器加载通知设置
   useEffect(() => {
@@ -88,7 +102,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
     e.stopPropagation();
     
     if (!notificationName.trim()) {
-      toast.error("请输入通知名称");
+      toast.error(t('notifications.nameEmpty'));
       return;
     }
 
@@ -125,21 +139,21 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
           setNotificationName("");
           setSelectedType("邮件");
           
-          toast.success("通知添加成功");
+          toast.success(t('notifications.addSuccess'));
           
           // 通知父组件通知方式已添加
           if (onNotificationChange) {
             onNotificationChange(true);
           }
         } else {
-          toast.error("添加通知失败：" + (data.message || "未知错误"));
+          toast.error(`${t('notifications.addFailed')}：${data.message || t('common.unknown')}`);
         }
       } else {
-        toast.error("添加通知失败：" + await response.text());
+        toast.error(`${t('notifications.addFailed')}：${await response.text()}`);
       }
     } catch (error) {
       console.error("添加通知失败:", error);
-      toast.error("添加通知失败");
+      toast.error(t('notifications.addFailed'));
     }
   };
   
@@ -149,7 +163,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
     e.stopPropagation();
     
     if (!notificationName.trim() || !currentEditingNotification) {
-      toast.error("请输入通知名称");
+      toast.error(t('notifications.nameEmpty'));
       return;
     }
 
@@ -188,21 +202,21 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
           setNotificationName("");
           setSelectedType("邮件");
           
-          toast.success("通知更新成功");
+          toast.success(t('notifications.editSuccess'));
           
           // 通知父组件通知方式仍然存在
           if (onNotificationChange) {
             onNotificationChange(updatedNotifications.length > 0);
           }
         } else {
-          toast.error("更新通知失败：" + (data.message || "未知错误"));
+          toast.error(`${t('notifications.editFailed')}：${data.message || t('common.unknown')}`);
         }
       } else {
-        toast.error("更新通知失败：" + await response.text());
+        toast.error(`${t('notifications.editFailed')}：${await response.text()}`);
       }
     } catch (error) {
       console.error("更新通知失败:", error);
-      toast.error("更新通知失败");
+      toast.error(t('notifications.editFailed'));
     }
   };
   
@@ -487,7 +501,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
   // 新增一个测试通知的函数
   const testNotification = async (notification: NotificationConfig) => {
     try {
-      toast.loading("正在发送测试通知...");
+      toast.loading(t('notifications.sendingTest'));
       
       // 发送到服务器
       const response = await fetch(`/api/settings/notifications/test`, {
@@ -503,17 +517,17 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          toast.success("测试通知发送成功！");
+          toast.success(t('notifications.testSuccess'));
         } else {
-          toast.error("测试通知失败：" + (data.message || "未知错误"));
+          toast.error(`${t('notifications.testFailed')}：${data.message || t('common.unknown')}`);
         }
       } else {
-        toast.error("测试通知失败：" + await response.text());
+        toast.error(`${t('notifications.testFailed')}：${await response.text()}`);
       }
     } catch (error) {
       toast.dismiss();
       console.error("测试通知失败:", error);
-      toast.error("测试通知失败");
+      toast.error(t('notifications.testFailed'));
     }
   };
   
@@ -522,7 +536,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
       <div className="flex items-center justify-center h-64">
         <div className="text-primary flex flex-col items-center">
           <i className="fas fa-spinner fa-spin fa-2x mb-3"></i>
-          <span>正在加载通知设置...</span>
+          <span>{t('notifications.loading')}</span>
         </div>
       </div>
     );
@@ -531,7 +545,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold dark:text-foreground text-light-text-primary">通知设置</h3>
+        <h3 className="text-lg font-semibold dark:text-foreground text-light-text-primary">{t('notifications.title')}</h3>
         <button 
           onClick={(e) => {
             e.preventDefault();
@@ -542,7 +556,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
           className="px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors flex items-center text-sm font-medium"
         >
           <i className="fas fa-plus mr-2"></i>
-          添加通知方式
+          {t('notifications.addNotification')}
         </button>
       </div>
       
@@ -552,7 +566,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
             <i className="fas fa-bell text-2xl"></i>
           </div>
           <p className="text-sm dark:text-foreground/80 text-light-text-secondary mb-4">
-            暂无通知配置，点击上方按钮添加通知方式
+            {t('notifications.noConfigHint')}
           </p>
         </div>
       ) : (
@@ -577,7 +591,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
                   <div>
                     <h4 className="text-md font-medium dark:text-foreground text-light-text-primary">{notification.name}</h4>
                     <p className="text-xs dark:text-foreground/60 text-light-text-secondary">
-                      {notification.type}
+                      {getTypeLabel(notification.type)}
                     </p>
                   </div>
                 </div>
@@ -590,7 +604,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
                       testNotification(notification);
                     }}
                     className="p-2 rounded-full hover:bg-green-500/10 text-green-400 transition-colors"
-                    title="测试通知"
+                    title={t('notifications.testNotification')}
                   >
                     <i className="fas fa-paper-plane"></i>
                   </button>
@@ -606,7 +620,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
                         ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' 
                         : 'hover:bg-yellow-500/10 text-gray-400'
                     }`}
-                    title={notification.defaultForNewMonitors ? "默认选中" : "设为默认选中"}
+                    title={notification.defaultForNewMonitors ? t('notifications.defaultSelected') : t('notifications.setDefault')}
                   >
                     <i className="fas fa-star"></i>
                   </button>
@@ -659,12 +673,12 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
                 <div className="mt-3 pl-11 text-sm dark:text-foreground/80 text-light-text-secondary bg-primary/5 p-2 rounded-lg">
                   <p>SMTP: {String(notification.config.smtpServer)}:{String(notification.config.smtpPort)}</p>
                   <p>
-                    接收邮箱: {String(notification.config.email) || "未设置"}
+                    {t('notifications.receiverEmailLabel')}: {String(notification.config.email) || t('common.notSet')}
                   </p>
                   {notification.defaultForNewMonitors && (
                     <p className="mt-1 text-xs text-yellow-400 flex items-center">
                       <i className="fas fa-star mr-1"></i>
-                      新增监控项时默认选中此通知
+                      {t('notifications.defaultForNewMonitors')}
                     </p>
                   )}
                 </div>
@@ -672,11 +686,11 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
               
               {notification.enabled && notification.type === "Webhook" && (
                 <div className="mt-3 pl-11 text-sm dark:text-foreground/80 text-light-text-secondary bg-primary/5 p-2 rounded-lg">
-                  <p>Webhook URL: {String(notification.config.url) || "未设置"}</p>
+                  <p>Webhook URL: {String(notification.config.url) || t('common.notSet')}</p>
                   {notification.defaultForNewMonitors && (
                     <p className="mt-1 text-xs text-yellow-400 flex items-center">
                       <i className="fas fa-star mr-1"></i>
-                      新增监控项时默认选中此通知
+                      {t('notifications.defaultForNewMonitors')}
                     </p>
                   )}
                 </div>
@@ -684,15 +698,15 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
               
               {notification.enabled && notification.type === "微信推送" && (
                 <div className="mt-3 pl-11 text-sm dark:text-foreground/80 text-light-text-secondary bg-primary/5 p-2 rounded-lg">
-                  <p>推送地址: <span className="font-mono text-xs">{String(notification.config.pushUrl) || "未设置"}</span></p>
+                  <p>{t('notifications.pushUrlLabel')}: <span className="font-mono text-xs">{String(notification.config.pushUrl) || t('common.notSet')}</span></p>
                   <p className="mt-1 text-xs dark:text-foreground/60 text-light-text-secondary flex items-center">
                     <i className="fas fa-info-circle mr-1 text-primary"></i>
-                    消息将以 Markdown 格式推送到 ShowDoc 推送服务
+                    {t('notifications.wechatMdHint')}
                   </p>
                   {notification.defaultForNewMonitors && (
                     <p className="mt-1 text-xs text-yellow-400 flex items-center">
                       <i className="fas fa-star mr-1"></i>
-                      新增监控项时默认选中此通知
+                      {t('notifications.defaultForNewMonitors')}
                     </p>
                   )}
                 </div>
@@ -700,17 +714,17 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
               
               {notification.enabled && notification.type === "钉钉推送" && (
                                  <div className="mt-3 pl-11 text-sm dark:text-foreground/80 text-light-text-secondary bg-primary/5 p-2 rounded-lg">
-                   <p>Webhook地址: <span className="font-mono text-xs">{String(notification.config.webhookUrl) || "未设置"}</span></p>
+                   <p>{t('notifications.webhookAddrLabel')}: <span className="font-mono text-xs">{String(notification.config.webhookUrl) || t('common.notSet')}</span></p>
                    {String(notification.config.secret) && (
                      <p className="mt-1 text-xs text-green-400 flex items-center">
                        <i className="fas fa-shield-alt mr-1"></i>
-                       已配置加签密钥
+                       {t('notifications.signedKey')}
                      </p>
                    )}
                    {notification.defaultForNewMonitors && (
                      <p className="mt-1 text-xs text-yellow-400 flex items-center">
                        <i className="fas fa-star mr-1"></i>
-                       新增监控项时默认选中此通知
+                       {t('notifications.defaultForNewMonitors')}
                      </p>
                    )}
                  </div>
@@ -718,11 +732,11 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
               
               {notification.enabled && notification.type === "企业微信推送" && (
                 <div className="mt-3 pl-11 text-sm dark:text-foreground/80 text-light-text-secondary bg-primary/5 p-2 rounded-lg">
-                  <p>Webhook地址: <span className="font-mono text-xs">{String(notification.config.webhookUrl) || "未设置"}</span></p>
+                  <p>{t('notifications.webhookAddrLabel')}: <span className="font-mono text-xs">{String(notification.config.webhookUrl) || t('common.notSet')}</span></p>
                   {notification.defaultForNewMonitors && (
                     <p className="mt-1 text-xs text-yellow-400 flex items-center">
                       <i className="fas fa-star mr-1"></i>
-                      新增监控项时默认选中此通知
+                      {t('notifications.defaultForNewMonitors')}
                     </p>
                   )}
                 </div>
@@ -738,7 +752,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
           <div className="bg-dark-card dark:bg-dark-card bg-light-card w-full max-w-4xl max-h-[90vh] rounded-xl shadow-2xl border border-primary/25 animate-fadeIn flex flex-col">
             <div className="flex justify-between items-center p-5 border-b border-primary/10 flex-shrink-0">
               <h3 className="text-lg font-medium dark:text-foreground text-light-text-primary">
-                {currentEditingNotification ? "编辑通知方式" : "添加通知方式"}
+                {currentEditingNotification ? t('notifications.editTitle') : t('notifications.addTitle')}
               </h3>
               <button 
                 onClick={(e) => {
@@ -754,7 +768,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
             
             <div id="notification-form" className="p-5 space-y-4 flex-1 overflow-y-auto">
               <div>
-                <label className="text-xs font-medium dark:text-foreground text-light-text-primary">通知类型</label>
+                <label className="text-xs font-medium dark:text-foreground text-light-text-primary">{t('notifications.notificationType')}</label>
                 <div className="mt-2 grid grid-cols-5 gap-3">
                   {(["邮件", "Webhook", "微信推送", "钉钉推送", "企业微信推送"] as NotificationType[]).map((type) => (
                     <button
@@ -779,14 +793,14 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
                         type === "企业微信推送" ? "fa-building" :
                         "fa-paper-plane"
                       } mr-2`}></i>
-                      <span>{type}</span>
+                      <span>{getTypeLabel(type)}</span>
                     </button>
                   ))}
                 </div>
               </div>
               
               <div>
-                <label className="text-xs font-medium dark:text-foreground text-light-text-primary">通知名称</label>
+                <label className="text-xs font-medium dark:text-foreground text-light-text-primary">{t('notifications.notificationName')}</label>
                 <input 
                   type="text" 
                   name="notificationName"
@@ -796,7 +810,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
                   onChange={(e) => setNotificationName(e.target.value)}
                 />
                 <p className="mt-1 text-xs dark:text-foreground text-light-text-secondary">
-                  通知名称将显示在列表中，便于识别不同的通知方式
+                  {t('notifications.notificationNameHint')}
                 </p>
               </div>
               
@@ -811,7 +825,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
                   htmlFor="defaultForNewMonitors" 
                   className="ml-2 text-sm dark:text-foreground text-light-text-primary"
                 >
-                  新增监控项时默认开启此通知
+                  {t('notifications.defaultForNew')}
                 </label>
               </div>
               
@@ -819,7 +833,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
               {selectedType === "邮件" && (
                 <>
                   <div>
-                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">接收邮箱地址</label>
+                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">{t('notifications.receiverEmail')}</label>
                     <input 
                       type="email" 
                       name="email"
@@ -830,7 +844,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
                   </div>
                   
                   <div>
-                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">SMTP 服务器</label>
+                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">{t('notifications.smtpServer')}</label>
                     <input 
                       type="text" 
                       name="smtpServer"
@@ -841,7 +855,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
                   </div>
                   
                   <div>
-                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">SMTP 端口</label>
+                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">{t('notifications.smtpPort')}</label>
                     <input 
                       type="text" 
                       name="smtpPort"
@@ -852,7 +866,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
                   </div>
                   
                   <div>
-                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">SMTP 用户名</label>
+                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">{t('notifications.smtpUsername')}</label>
                     <input 
                       type="text" 
                       name="username"
@@ -863,7 +877,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
                   </div>
                   
                   <div>
-                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">SMTP 密码</label>
+                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">{t('notifications.smtpPassword')}</label>
                     <input 
                       type="password" 
                       name="password"
@@ -879,7 +893,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
               {selectedType === "Webhook" && (
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">Webhook URL</label>
+                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">{t('notifications.webhookUrl')}</label>
                     <input 
                       type="url" 
                       name="webhookUrl"
@@ -888,13 +902,13 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
                       defaultValue={currentEditingNotification?.config?.url as string || ""}
                     />
                     <p className="mt-1 text-xs dark:text-foreground text-light-text-secondary">
-                      接收通知的URL地址，支持变量占位符如 {`{monitorName}`}
+                      {t('notifications.webhookUrlHint')}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-medium dark:text-foreground text-light-text-primary">HTTP方法</label>
+                      <label className="text-xs font-medium dark:text-foreground text-light-text-primary">{t('notifications.httpMethod')}</label>
                       <select 
                         name="webhookMethod"
                         className="mt-1 w-full px-3 py-2 rounded-lg border border-primary/20 bg-dark-nav dark:bg-dark-nav bg-light-nav dark:text-foreground text-light-text-primary focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
@@ -924,7 +938,7 @@ export function NotificationSettings({ onNotificationChange }: NotificationSetti
                   </div>
 
                   <div>
-                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">自定义请求头（可选）</label>
+                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">{t('notifications.customHeadersOpt')}</label>
                     <textarea 
                       name="webhookHeaders"
                       rows={4}
@@ -941,12 +955,12 @@ Content-Type: application/json`}
                       })()}
                     />
                     <p className="mt-1 text-xs dark:text-foreground text-light-text-secondary">
-                      每行一个请求头，格式：Header-Name: header-value
+                      {t('notifications.customHeadersHint')}
                     </p>
                   </div>
 
                   <div>
-                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">请求体模板（可选）</label>
+                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">{t('notifications.bodyTemplateOpt')}</label>
                     <textarea 
                       name="webhookBodyTemplate"
                       rows={8}
@@ -961,55 +975,55 @@ Content-Type: application/json`}
                       defaultValue={currentEditingNotification?.config?.bodyTemplate as string || ""}
                     />
                     <p className="mt-1 text-xs dark:text-foreground text-light-text-secondary">
-                      支持变量占位符，留空则使用系统默认格式
+                      {t('notifications.bodyTemplateHint')}
                     </p>
                   </div>
                   
                   {/* 变量说明 */}
                   <div className="mt-3 p-4 bg-primary/5 rounded-lg border border-primary/10">
-                    <h3 className="text-sm font-medium mb-3 dark:text-foreground text-light-text-primary">可用变量</h3>
+                    <h3 className="text-sm font-medium mb-3 dark:text-foreground text-light-text-primary">{t('notifications.availableVars')}</h3>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>
                         <span className="font-mono text-primary">{`{monitorName}`}</span>
-                        <span className="ml-2 dark:text-foreground/70 text-light-text-secondary">监控项名称</span>
+                        <span className="ml-2 dark:text-foreground/70 text-light-text-secondary">{t('notifications.varMonitorName')}</span>
                       </div>
                       <div>
                         <span className="font-mono text-primary">{`{monitorType}`}</span>
-                        <span className="ml-2 dark:text-foreground/70 text-light-text-secondary">监控类型</span>
+                        <span className="ml-2 dark:text-foreground/70 text-light-text-secondary">{t('notifications.varMonitorType')}</span>
                       </div>
                       <div>
                         <span className="font-mono text-primary">{`{status}`}</span>
-                        <span className="ml-2 dark:text-foreground/70 text-light-text-secondary">状态（正常/异常/等待）</span>
+                        <span className="ml-2 dark:text-foreground/70 text-light-text-secondary">{t('notifications.varStatus')}</span>
                       </div>
                       <div>
                         <span className="font-mono text-primary">{`{statusCode}`}</span>
-                        <span className="ml-2 dark:text-foreground/70 text-light-text-secondary">状态码（1/0/2）</span>
+                        <span className="ml-2 dark:text-foreground/70 text-light-text-secondary">{t('notifications.varStatusCode')}</span>
                       </div>
                       <div>
                         <span className="font-mono text-primary">{`{time}`}</span>
-                        <span className="ml-2 dark:text-foreground/70 text-light-text-secondary">检查时间</span>
+                        <span className="ml-2 dark:text-foreground/70 text-light-text-secondary">{t('notifications.varTime')}</span>
                       </div>
                       <div>
                         <span className="font-mono text-primary">{`{message}`}</span>
-                        <span className="ml-2 dark:text-foreground/70 text-light-text-secondary">详细信息</span>
+                        <span className="ml-2 dark:text-foreground/70 text-light-text-secondary">{t('notifications.varMessage')}</span>
                       </div>
                       <div>
                         <span className="font-mono text-primary">{`{failureCount}`}</span>
-                        <span className="ml-2 dark:text-foreground/70 text-light-text-secondary">失败次数</span>
+                        <span className="ml-2 dark:text-foreground/70 text-light-text-secondary">{t('notifications.varFailureCount')}</span>
                       </div>
                       <div>
                         <span className="font-mono text-primary">{`{failureDuration}`}</span>
-                        <span className="ml-2 dark:text-foreground/70 text-light-text-secondary">失败持续时间</span>
+                        <span className="ml-2 dark:text-foreground/70 text-light-text-secondary">{t('notifications.varFailureDuration')}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* 平台示例 */}
                   <div className="mt-3 p-4 bg-primary/5 rounded-lg border border-primary/10">
-                    <h3 className="text-sm font-medium mb-3 dark:text-foreground text-light-text-primary">常见平台配置示例</h3>
+                    <h3 className="text-sm font-medium mb-3 dark:text-foreground text-light-text-primary">{t('notifications.platformExamples')}</h3>
                     <div className="space-y-3">
                       <details className="text-xs">
-                        <summary className="cursor-pointer font-medium dark:text-foreground text-light-text-primary">飞书机器人</summary>
+                        <summary className="cursor-pointer font-medium dark:text-foreground text-light-text-primary">{t('notifications.feishuRobot')}</summary>
                         <div className="mt-2 p-2 bg-dark-nav/50 dark:bg-dark-nav/50 rounded text-xs">
                           <p className="mb-2"><strong>Content-Type:</strong> application/json</p>
                           <p className="mb-2"><strong>请求体模板:</strong></p>
@@ -1023,7 +1037,7 @@ Content-Type: application/json`}
                       </details>
                       
                       <details className="text-xs">
-                        <summary className="cursor-pointer font-medium dark:text-foreground text-light-text-primary">钉钉机器人</summary>
+                        <summary className="cursor-pointer font-medium dark:text-foreground text-light-text-primary">{t('notifications.dingtalkRobot')}</summary>
                         <div className="mt-2 p-2 bg-dark-nav/50 dark:bg-dark-nav/50 rounded text-xs">
                           <p className="mb-2"><strong>Content-Type:</strong> application/json</p>
                           <p className="mb-2"><strong>请求体模板:</strong></p>
@@ -1038,7 +1052,7 @@ Content-Type: application/json`}
                       </details>
                       
                       <details className="text-xs">
-                        <summary className="cursor-pointer font-medium dark:text-foreground text-light-text-primary">企业微信机器人</summary>
+                        <summary className="cursor-pointer font-medium dark:text-foreground text-light-text-primary">{t('notifications.workWechatRobot')}</summary>
                         <div className="mt-2 p-2 bg-dark-nav/50 dark:bg-dark-nav/50 rounded text-xs">
                           <p className="mb-2"><strong>Content-Type:</strong> application/json</p>
                           <p className="mb-2"><strong>请求体模板:</strong></p>
@@ -1058,7 +1072,7 @@ Content-Type: application/json`}
               {/* 微信推送配置项 */}
               {selectedType === "微信推送" && (
                 <div>
-                  <label className="text-xs font-medium dark:text-foreground text-light-text-primary">微信推送URL</label>
+                  <label className="text-xs font-medium dark:text-foreground text-light-text-primary">{t('notifications.wechatUrl')}</label>
                   <input 
                     type="url" 
                     name="pushUrl"
@@ -1067,17 +1081,17 @@ Content-Type: application/json`}
                     defaultValue={currentEditingNotification?.config?.pushUrl as string || ""}
                   />
                   <p className="mt-1 text-xs dark:text-foreground text-light-text-secondary">
-                    请输入您的ShowDoc推送服务专属URL
+                    {t('notifications.wechatUrlHint')}
                   </p>
                   <div className="mt-3 p-3 rounded-lg bg-primary/5">
                     <div className="flex items-center text-xs dark:text-foreground/70 text-light-text-secondary mb-2">
                       <i className="fas fa-info-circle text-primary mr-2"></i>
-                      <span>ShowDoc推送服务使用说明</span>
+                      <span>{t('notifications.wechatUsageTitle')}</span>
                     </div>
                     <ol className="text-xs dark:text-foreground/70 text-light-text-secondary list-decimal pl-5 space-y-1">
-                      <li>前往 <a href="https://push.showdoc.com.cn" target="_blank" className="text-primary hover:underline">https://push.showdoc.com.cn</a> 获取您的专属推送地址</li>
-                      <li>将完整URL复制到上方输入框中</li>
-                      <li>系统将通过该URL推送监控告警信息到您的微信</li>
+                      <li>{t('notifications.wechatUsage1')}</li>
+                      <li>{t('notifications.wechatUsage2')}</li>
+                      <li>{t('notifications.wechatUsage3')}</li>
                     </ol>
                   </div>
                 </div>
@@ -1087,7 +1101,7 @@ Content-Type: application/json`}
               {selectedType === "钉钉推送" && (
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">钉钉Webhook URL</label>
+                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">{t('notifications.dingtalkUrl')}</label>
                     <input 
                       type="url" 
                       name="dingtalkWebhookUrl"
@@ -1101,7 +1115,7 @@ Content-Type: application/json`}
                   </div>
 
                   <div>
-                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">加签密钥（可选）</label>
+                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">{t('notifications.dingtalkSecret')}</label>
                     <input 
                       type="password" 
                       name="dingtalkSecret"
@@ -1138,7 +1152,7 @@ Content-Type: application/json`}
               {selectedType === "企业微信推送" && (
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">企业微信Webhook URL</label>
+                    <label className="text-xs font-medium dark:text-foreground text-light-text-primary">{t('notifications.workWechatUrl')}</label>
                     <input 
                       type="url" 
                       name="workWechatWebhookUrl"
@@ -1147,7 +1161,7 @@ Content-Type: application/json`}
                       defaultValue={currentEditingNotification?.config?.webhookUrl as string || ""}
                     />
                     <p className="mt-1 text-xs dark:text-foreground text-light-text-secondary">
-                      请输入企业微信群机器人的Webhook地址
+                      {t('notifications.workWechatUrlHint')}
                     </p>
                   </div>
 
@@ -1180,7 +1194,7 @@ Content-Type: application/json`}
                 }}
                 className="px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors mr-3"
               >
-                取消
+                {t('common.cancel')}
               </button>
               
               <button 
@@ -1202,14 +1216,14 @@ Content-Type: application/json`}
                 disabled={!notificationName.trim()}
               >
                 <i className="fas fa-paper-plane mr-2"></i>
-                测试通知
+                {t('notifications.testNotification')}
               </button>
               
               <button 
                 onClick={currentEditingNotification ? handleEditNotification : handleAddNotification}
                 className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
               >
-                {currentEditingNotification ? "保存更改" : "添加通知"}
+                {currentEditingNotification ? t('common.save') : t('common.add')}
               </button>
             </div>
           </div>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/context/I18nContext";
+
 interface StatusPage {
   id: string;
   name: string;
@@ -22,8 +24,9 @@ interface StatusPageListProps {
 }
 
 export function StatusPageList({ statusPages, onEdit, onDelete }: StatusPageListProps) {
+  const { t, locale } = useI18n();
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('zh-CN', {
+    return new Date(dateString).toLocaleDateString(locale === 'en' ? 'en-US' : 'zh-CN', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -40,8 +43,8 @@ export function StatusPageList({ statusPages, onEdit, onDelete }: StatusPageList
         <div className="text-foreground/40 text-6xl mb-4">
           <i className="fas fa-chart-line"></i>
         </div>
-        <h3 className="text-xl font-medium text-foreground mb-2">还没有状态页</h3>
-        <p className="text-foreground/60">创建您的第一个状态页来展示监控状态</p>
+        <h3 className="text-xl font-medium text-foreground mb-2">{t('statusPages.noStatusPages')}</h3>
+        <p className="text-foreground/60">{t('statusPages.noStatusPagesHint')}</p>
       </div>
     );
   }
@@ -64,14 +67,14 @@ export function StatusPageList({ statusPages, onEdit, onDelete }: StatusPageList
               <button
                 onClick={() => onEdit(statusPage)}
                 className="text-primary hover:text-primary/80 transition-colors"
-                title="编辑"
+                title={t('common.edit')}
               >
                 <i className="fas fa-edit"></i>
               </button>
               <button
                 onClick={() => onDelete(statusPage.id)}
                 className="text-error hover:text-error/80 transition-colors"
-                title="删除"
+                title={t('common.delete')}
               >
                 <i className="fas fa-trash"></i>
               </button>
@@ -80,30 +83,30 @@ export function StatusPageList({ statusPages, onEdit, onDelete }: StatusPageList
 
           <div className="space-y-3 mb-4">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-foreground/60">URL标识符:</span>
+              <span className="text-foreground/60">{t('statusPages.urlIdentifier')}</span>
               <code className="bg-foreground/5 px-2 py-1 rounded text-xs">
                 {statusPage.slug}
               </code>
             </div>
             
             <div className="flex items-center justify-between text-sm">
-              <span className="text-foreground/60">监控项数量:</span>
-              <span className="font-medium">{statusPage.monitors.length}个</span>
+              <span className="text-foreground/60">{t('statusPages.monitorCount')}</span>
+              <span className="font-medium">{statusPage.monitors.length}{t('statusPages.units')}</span>
             </div>
 
             <div className="flex items-center justify-between text-sm">
-              <span className="text-foreground/60">访问权限:</span>
+              <span className="text-foreground/60">{t('statusPages.accessLevel')}</span>
               <span className={`px-2 py-1 rounded-full text-xs ${
                 statusPage.isPublic 
                   ? 'bg-success/20 text-success' 
                   : 'bg-warning/20 text-warning'
               }`}>
-                {statusPage.isPublic ? '公开' : '私有'}
+                {statusPage.isPublic ? t('statusPages.public') : t('statusPages.private')}
               </span>
             </div>
 
             <div className="flex items-center justify-between text-sm">
-              <span className="text-foreground/60">创建时间:</span>
+              <span className="text-foreground/60">{t('statusPages.createTime')}</span>
               <span className="text-foreground/80">{formatDate(statusPage.createdAt)}</span>
             </div>
           </div>
@@ -116,7 +119,7 @@ export function StatusPageList({ statusPages, onEdit, onDelete }: StatusPageList
               className="block w-full bg-primary hover:bg-primary/90 text-white text-center py-2 rounded-lg transition-colors text-sm"
             >
               <i className="fas fa-external-link-alt mr-2"></i>
-              查看状态页
+              {t('statusPages.viewStatusPage')}
             </a>
             
             <button
@@ -124,7 +127,7 @@ export function StatusPageList({ statusPages, onEdit, onDelete }: StatusPageList
               className="block w-full bg-foreground/5 hover:bg-foreground/10 text-foreground/80 hover:text-foreground transition-colors py-2 rounded-lg text-sm"
             >
               <i className="fas fa-copy mr-2"></i>
-              复制链接
+              {t('statusPages.copyLink')}
             </button>
           </div>
         </div>

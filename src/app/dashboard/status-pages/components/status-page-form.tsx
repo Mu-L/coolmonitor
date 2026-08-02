@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useI18n } from "@/context/I18nContext";
 
 interface Monitor {
   id: string;
@@ -33,6 +34,7 @@ interface StatusPageFormProps {
 }
 
 export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFormProps) {
+  const { t } = useI18n();
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -127,11 +129,11 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
           setDisplayNames({});
         } else {
           const error = await response.json();
-          alert(`添加监控项失败: ${error.error}`);
+          alert(t('statusPages.addFailed') + ': ' + error.error);
         }
       } catch (error) {
         console.error('添加监控项失败:', error);
-        alert('添加监控项失败');
+        alert(t('statusPages.addFailed'));
       } finally {
         setAddingMonitors(false);
       }
@@ -149,7 +151,7 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
 
   // 从状态页移除监控项
   const removeMonitorFromStatusPage = async (monitorId: string) => {
-    if (!confirm('确定要移除此监控项吗？')) return;
+    if (!confirm(t('statusPages.removeConfirm'))) return;
 
     if (statusPage) {
       // 编辑模式：从数据库移除
@@ -162,11 +164,11 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
           await fetchStatusPageMonitors();
         } else {
           const error = await response.json();
-          alert(`移除监控项失败: ${error.error}`);
+          alert(t('statusPages.removeFailed') + ': ' + error.error);
         }
       } catch (error) {
         console.error('移除监控项失败:', error);
-        alert('移除监控项失败');
+        alert(t('statusPages.removeFailed'));
       }
     } else {
       // 创建模式：从临时列表移除
@@ -195,7 +197,7 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
       case 'http':
       case 'https-cert':
       case 'keyword':
-        return monitor.url || '未知URL';
+        return monitor.url || t('statusPages.unknownUrl');
       case 'port':
         return `${monitor.host}:${monitor.port}`;
       case 'mysql':
@@ -210,17 +212,17 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = '请输入状态页名称';
+      newErrors.name = t('statusPages.nameRequired');
     }
 
     if (!formData.slug.trim()) {
-      newErrors.slug = '请输入URL标识符';
+      newErrors.slug = t('statusPages.slugRequired');
     } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
-      newErrors.slug = 'URL标识符只能包含小写字母、数字和连字符';
+      newErrors.slug = t('statusPages.slugInvalid');
     }
 
     if (!formData.title.trim()) {
-      newErrors.title = '请输入页面标题';
+      newErrors.title = t('statusPages.titleRequired');
     }
 
     setErrors(newErrors);
@@ -280,11 +282,11 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
         onSuccess();
       } else {
         const error = await response.json();
-        alert(`操作失败: ${error.error}`);
+        alert(t('statusPages.operationFailed') + ': ' + error.error);
       }
     } catch (error) {
       console.error('保存状态页失败:', error);
-      alert('保存状态页失败');
+      alert(t('statusPages.saveFailed'));
     } finally {
       setLoading(false);
     }
@@ -315,7 +317,7 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
       <div className="dark:bg-dark-card bg-light-card rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-foreground">
-            {statusPage ? '编辑状态页' : '创建状态页'}
+            {statusPage ? t('statusPages.editTitle') : t('statusPages.createTitle')}
           </h2>
           <button
             onClick={onClose}
@@ -330,7 +332,7 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                状态页名称 *
+                {t('statusPages.nameLabel') + ' *'}
               </label>
               <input
                 type="text"
@@ -339,7 +341,7 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
                 className={`w-full px-3 py-2 border rounded-lg dark:bg-dark-nav bg-light-nav text-foreground focus:outline-none ${
                   errors.name ? 'border-error' : 'border-primary/20 focus:border-primary'
                 }`}
-                placeholder="例如：主站监控"
+                placeholder={t('statusPages.namePlaceholder')}
               />
               {errors.name && (
                 <p className="text-error text-sm mt-1">{errors.name}</p>
@@ -348,7 +350,7 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                URL标识符 *
+                {t('statusPages.slugLabel') + ' *'}
               </label>
               <input
                 type="text"
@@ -357,7 +359,7 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
                 className={`w-full px-3 py-2 border rounded-lg dark:bg-dark-nav bg-light-nav text-foreground focus:outline-none ${
                   errors.slug ? 'border-error' : 'border-primary/20 focus:border-primary'
                 }`}
-                placeholder="例如：main-site"
+                placeholder={t('statusPages.slugPlaceholder')}
               />
               {errors.slug && (
                 <p className="text-error text-sm mt-1">{errors.slug}</p>
@@ -367,7 +369,7 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              页面标题 *
+              {t('statusPages.titleLabel') + ' *'}
             </label>
             <input
               type="text"
@@ -376,7 +378,7 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
               className={`w-full px-3 py-2 border rounded-lg dark:bg-dark-nav bg-light-nav text-foreground focus:outline-none ${
                 errors.title ? 'border-error' : 'border-primary/20 focus:border-primary'
               }`}
-              placeholder="例如：主站服务状态"
+              placeholder={t('statusPages.titlePlaceholder')}
             />
             {errors.title && (
               <p className="text-error text-sm mt-1">{errors.title}</p>
@@ -392,26 +394,26 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
               className="mr-2"
             />
             <label htmlFor="isPublic" className="text-sm text-foreground">
-              公开访问（无需登录即可查看）
+              {t('statusPages.publicAccess')}
             </label>
           </div>
 
           {/* 监控项管理 */}
           {(
             <div className="border-t border-primary/20 pt-6">
-              <h3 className="text-lg font-medium text-foreground mb-4">管理监控项</h3>
-              
+              <h3 className="text-lg font-medium text-foreground mb-4">{t('statusPages.manageMonitors')}</h3>
+
               {/* 添加监控项区域 */}
               <div className="mb-6 p-4 border border-primary/20 rounded-lg">
-                <h4 className="text-md font-medium text-foreground mb-4">添加监控项</h4>
-                
+                <h4 className="text-md font-medium text-foreground mb-4">{t('statusPages.addMonitors')}</h4>
+
                 {availableMonitors.length === 0 ? (
-                  <p className="text-foreground/60">所有监控项已添加到状态页</p>
+                  <p className="text-foreground/60">{t('statusPages.allAdded')}</p>
                 ) : (
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-2">
-                        选择监控项（可多选）
+                        {t('statusPages.selectMonitors')}
                       </label>
                       <div className="h-64 overflow-y-auto border border-primary/20 rounded-lg p-3 dark:bg-dark-nav bg-light-nav">
                         {availableMonitors.map((monitor) => (
@@ -449,7 +451,7 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
                       </div>
                       {selectedMonitorIds.length > 0 && (
                         <p className="text-sm text-foreground/60 mt-2">
-                          已选择 {selectedMonitorIds.length} 个监控项
+                          {t('statusPages.selectedCount', { n: selectedMonitorIds.length })}
                         </p>
                       )}
                     </div>
@@ -457,7 +459,7 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
                     {selectedMonitorIds.length > 0 && (
                       <div>
                         <label className="block text-sm font-medium text-foreground mb-2">
-                          自定义显示名称（可选）
+                          {t('statusPages.customDisplayName')}
                         </label>
                         <div className="space-y-2">
                           {selectedMonitorIds.map((monitorId) => {
@@ -476,7 +478,7 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
                                     ...prev,
                                     [monitorId]: e.target.value
                                   }))}
-                                  placeholder="留空则使用原名称"
+                                  placeholder={t('statusPages.displayNamePlaceholder')}
                                   className="flex-1 px-3 py-1 text-sm border border-primary/20 rounded dark:bg-dark-nav bg-light-nav text-foreground focus:border-primary focus:outline-none"
                                 />
                               </div>
@@ -492,7 +494,7 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
                       disabled={selectedMonitorIds.length === 0 || addingMonitors}
                       className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      {addingMonitors ? '添加中...' : `添加 ${selectedMonitorIds.length} 个监控项`}
+                      {addingMonitors ? t('statusPages.adding') : t('statusPages.addN', { n: selectedMonitorIds.length })}
                     </button>
                   </div>
                 )}
@@ -500,10 +502,10 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
 
               {/* 已添加的监控项列表 */}
               <div>
-                <h4 className="text-md font-medium text-foreground mb-4">已添加的监控项</h4>
-                
+                <h4 className="text-md font-medium text-foreground mb-4">{t('statusPages.addedMonitors')}</h4>
+
                 {allMonitors.length === 0 ? (
-                  <p className="text-foreground/60">还没有添加任何监控项</p>
+                  <p className="text-foreground/60">{t('statusPages.noAddedMonitors')}</p>
                 ) : (
                   <div className="h-48 overflow-y-auto space-y-3">
                     {allMonitors.map((spm, index) => (
@@ -532,7 +534,7 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
                           type="button"
                           onClick={() => removeMonitorFromStatusPage(spm.monitorId)}
                           className="text-error hover:text-error/80 transition-colors ml-4"
-                          title="移除"
+                          title={t('statusPages.remove')}
                         >
                           <i className="fas fa-trash"></i>
                         </button>
@@ -551,14 +553,14 @@ export function StatusPageForm({ statusPage, onClose, onSuccess }: StatusPageFor
               onClick={onClose}
               className="px-6 py-2 border border-primary/20 rounded-lg text-foreground hover:bg-primary/10 transition-colors"
             >
-              取消
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading}
               className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? '保存中...' : (statusPage ? '更新状态页' : '创建状态页')}
+              {loading ? t('common.saving') : (statusPage ? t('statusPages.updateBtn') : t('statusPages.createBtn'))}
             </button>
           </div>
         </form>

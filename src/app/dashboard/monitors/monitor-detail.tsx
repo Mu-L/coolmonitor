@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { MonitorForm } from "./monitor-form";
+import { useI18n } from "@/context/I18nContext";
 
 // 注册必须的组件
 echarts.use([
@@ -81,11 +82,12 @@ export function MonitorDetail({
   id, 
   name, 
   type, 
-  status = "正常", 
+  status = "up", 
   uptime = "99.9%", 
   availability = "100%", 
   responseTime = "2ms"
 }: MonitorDetailProps) {
+  const { t } = useI18n();
   const [timeRange, setTimeRange] = useState("2h");
   const [isLoading, setIsLoading] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -122,15 +124,15 @@ export function MonitorDetail({
   // 获取监控项的状态样式
   const getMonitorStatusClass = (status: string) => {
     switch (status) {
-      case "正常":
+      case "up":
         return "text-success";
-      case "故障":
+      case "down":
         return "text-error";
-      case "维护":
+      case "pending":
         return "text-primary";
-      case "未知":
+      case "unknown":
         return "text-warning";
-      case "暂停":
+      case "paused":
         return "text-foreground/50";
       default:
         return "text-foreground/50";
@@ -140,15 +142,15 @@ export function MonitorDetail({
   // 获取监控项的状态点颜色
   const getMonitorStatusDotClass = (status: string) => {
     switch (status) {
-      case "正常":
+      case "up":
         return "bg-success";
-      case "故障":
+      case "down":
         return "bg-error";
-      case "维护":
+      case "pending":
         return "bg-primary";
-      case "未知":
+      case "unknown":
         return "bg-warning";
-      case "暂停":
+      case "paused":
         return "bg-foreground/50";
       default:
         return "bg-foreground/50";
@@ -452,11 +454,11 @@ export function MonitorDetail({
           }
         } else {
           const errorData = await response.json();
-          toast.error(`获取监控详情失败: ${errorData.error || '未知错误'}`);
+          toast.error(`${t('monitorDetail.fetchDetailFailed')}: ${errorData.error || t('common.unknown')}`);
         }
       } catch (error) {
         console.error("获取监控详情失败", error);
-        toast.error("获取监控详情失败，请稍后重试");
+        toast.error(t('monitorDetail.fetchDetailFailedRetry'));
       } finally {
         setIsLoading(false);
       }
@@ -506,7 +508,7 @@ export function MonitorDetail({
           });
         }
         
-        toast.success(isPaused ? '监控已恢复' : '监控已暂停');
+        toast.success(isPaused ? t('monitorDetail.resumed') : t('monitorDetail.pausedToast'));
         
         // 刷新监控详情
         setTimeout(() => {
@@ -521,11 +523,11 @@ export function MonitorDetail({
         }, 500);
       } else {
         const error = await response.json();
-        toast.error(`操作失败: ${error.error || '未知错误'}`);
+        toast.error(`${t('monitorDetail.operationFailed')}: ${error.error || t('common.unknown')}`);
       }
     } catch (error) {
       console.error('更新监控状态失败:', error);
-      toast.error('操作失败，请稍后重试');
+      toast.error(t('monitorDetail.operationFailedRetry'));
     } finally {
       setIsLoading(false);
     }
@@ -656,7 +658,7 @@ export function MonitorDetail({
       });
       
       if (response.ok) {
-        toast.success('监控项已删除');
+        toast.success(t('monitorDetail.deleted'));
         
         // 关闭确认对话框
         setShowDeleteDialog(false);
@@ -672,12 +674,12 @@ export function MonitorDetail({
         }, 500);
       } else {
         const error = await response.json();
-        toast.error(`删除失败: ${error.error || '未知错误'}`);
+        toast.error(`${t('monitorDetail.deleteFailed')}: ${error.error || t('common.unknown')}`);
         setShowDeleteDialog(false);
       }
     } catch (error) {
       console.error('删除监控项失败:', error);
-      toast.error('删除失败，请稍后重试');
+      toast.error(t('monitorDetail.deleteFailedRetry'));
       setShowDeleteDialog(false);
     } finally {
       setIsLoading(false);
@@ -789,14 +791,14 @@ export function MonitorDetail({
   // 格式化监控类型显示
   const formatMonitorType = (type: string) => {
     switch(type) {
-      case 'http': return 'HTTP/HTTPS网址';
-      case 'keyword': return '关键字监控';
-      case 'port': return '端口监控';
-      case 'mysql': return 'MySQL 数据库';
-      case 'postgres': return 'PostgreSQL 数据库';
-      case 'sqlserver': return 'SQL Server 数据库';
-      case 'redis': return 'Redis 数据库';
-      case 'push': return '推送监控';
+      case 'http': return t('monitorType.httpWebsite');
+      case 'keyword': return t('monitorType.keyword');
+      case 'port': return t('monitorType.tcpPort');
+      case 'mysql': return t('monitorType.mysql');
+      case 'postgres': return t('monitorType.postgres');
+      case 'sqlserver': return t('monitorType.sqlserver');
+      case 'redis': return t('monitorType.redis');
+      case 'push': return t('monitorType.push');
       default: return type;
     }
   };
@@ -805,10 +807,10 @@ export function MonitorDetail({
   const getCheckInterval = () => {
     if (monitorDetails?.interval) {
       return monitorDetails.interval > 60 
-        ? `${Math.floor(monitorDetails.interval / 60)} 分钟` 
-        : `${monitorDetails.interval} 秒`;
+        ? `${Math.floor(monitorDetails.interval / 60)} ${t('common.minutes')}` 
+        : `${monitorDetails.interval} ${t('common.seconds')}`;
     }
-    return '60 秒';
+    return `60 ${t('common.seconds')}`;
   };
 
   return (
@@ -837,7 +839,7 @@ export function MonitorDetail({
             ) : (
               <i className={`fas ${isPaused ? 'fa-play' : 'fa-pause'} mr-2`}></i>
             )}
-            {isPaused ? '恢复' : '暂停'}
+            {isPaused ? t('monitorDetail.resume') : t('monitorDetail.pause')}
           </button>
           <button 
             className="!rounded-button px-4 py-2 border border-primary/20 hover:bg-primary/5 transition-colors"
@@ -845,7 +847,7 @@ export function MonitorDetail({
             disabled={isLoading}
           >
             <i className="fas fa-edit mr-2"></i>
-            编辑
+            {t('common.edit')}
           </button>
           <button 
             className="!rounded-button px-4 py-2 border border-error/20 text-error hover:bg-error/5 transition-colors"
@@ -857,7 +859,7 @@ export function MonitorDetail({
             ) : (
               <i className="fas fa-trash mr-2"></i>
             )}
-            删除
+            {t('common.delete')}
           </button>
         </div>
       </div>
@@ -866,7 +868,7 @@ export function MonitorDetail({
       <div className="dark:bg-dark-card bg-light-card rounded-lg border border-primary/15 hover:border-primary/30 transition-all shadow-sm p-6">
         <div className="flex items-center justify-between">
           <div style={{ width: '100%' }}>
-            <h3 className="text-lg font-medium">监控状态</h3>
+            <h3 className="text-lg font-medium">{t('monitorDetail.monitorStatus')}</h3>
             <div 
               ref={statusContainerRef}
               className="flex space-x-3 mt-4 items-center flex-nowrap" 
@@ -876,11 +878,11 @@ export function MonitorDetail({
                 <div key={index} className={`h-2.5 w-2.5 rounded-full ${getStatusDotClass(status)}`}></div>
               ))}
             </div>
-            <div className="text-xs text-foreground/50 mt-2">检测频率 {getCheckInterval()}</div>
+            <div className="text-xs text-foreground/50 mt-2">{t('monitorDetail.checkFrequency', { interval: getCheckInterval() })}</div>
           </div>
           <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
             <div className={`w-3 h-3 rounded-full ${getMonitorStatusDotClass(status)}`}></div>
-            <span className={getMonitorStatusClass(status)}>{status}</span>
+            <span className={getMonitorStatusClass(status)}>{t('status.' + status)}</span>
           </div>
         </div>
       </div>
@@ -888,46 +890,46 @@ export function MonitorDetail({
       {/* 状态指标卡片组 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="dark:bg-dark-card bg-light-card rounded-lg border border-primary/15 hover:border-primary/30 transition-all p-4">
-          <div className="text-sm text-foreground/60">最近响应</div>
+          <div className="text-sm text-foreground/60">{t('monitorDetail.lastResponse')}</div>
           <div className="text-2xl font-medium mt-1">
             {historyData.length > 0 && historyData[0].ping ? `${historyData[0].ping}ms` : responseTime}
           </div>
-          <div className="text-xs text-foreground/50 mt-1">最近一次检测</div>
+          <div className="text-xs text-foreground/50 mt-1">{t('monitorDetail.lastCheck')}</div>
         </div>
         
         <div className="dark:bg-dark-card bg-light-card rounded-lg border border-primary/15 hover:border-primary/30 transition-all p-4">
-          <div className="text-sm text-foreground/60">平均响应</div>
+          <div className="text-sm text-foreground/60">{t('monitorDetail.avgResponse')}</div>
           <div className="text-2xl font-medium mt-1">{calculateAverageResponseTime()}</div>
-          <div className="text-xs text-foreground/50 mt-1">24小时平均</div>
+          <div className="text-xs text-foreground/50 mt-1">{t('monitorDetail.avg24h')}</div>
         </div>
         
         <div className="dark:bg-dark-card bg-light-card rounded-lg border border-primary/15 hover:border-primary/30 transition-all p-4">
-          <div className="text-sm text-foreground/60">在线时间率</div>
+          <div className="text-sm text-foreground/60">{t('monitorDetail.uptime')}</div>
           <div className="text-2xl font-medium mt-1">{calculatedUptime}</div>
-          <div className="text-xs text-foreground/50 mt-1">90天统计</div>
+          <div className="text-xs text-foreground/50 mt-1">{t('monitorDetail.uptime90d')}</div>
         </div>
         
         <div className="dark:bg-dark-card bg-light-card rounded-lg border border-primary/15 hover:border-primary/30 transition-all p-4">
-          <div className="text-sm text-foreground/60">30天可用性</div>
+          <div className="text-sm text-foreground/60">{t('monitorDetail.availability30d')}</div>
           <div className="text-2xl font-medium mt-1">{calculatedAvailability}</div>
-          <div className="text-xs text-foreground/50 mt-1">30天统计</div>
+          <div className="text-xs text-foreground/50 mt-1">{t('monitorDetail.availability30dStat')}</div>
         </div>
       </div>
       
       {/* 响应时间趋势图表 */}
       <div className="dark:bg-dark-card bg-light-card rounded-lg border border-primary/15 hover:border-primary/30 transition-all p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium">响应时间趋势</h3>
+          <h3 className="text-lg font-medium">{t('monitorDetail.responseTrend')}</h3>
           <select 
             value={timeRange}
             onChange={(e) => handleTimeRangeChange(e.target.value)}
             className="!rounded-button dark:bg-dark-nav bg-light-nav border border-primary/20 px-4 py-2 text-sm focus:border-primary focus:outline-none"
           >
-            <option value="2h">最近 2 小时</option>
-            <option value="24h">最近 24 小时</option>
-            <option value="7d">最近 7 天</option>
-            <option value="30d">最近 30 天</option>
-            <option value="90d">最近 90 天</option>
+            <option value="2h">{t('monitorDetail.last2h')}</option>
+            <option value="24h">{t('monitorDetail.last24h')}</option>
+            <option value="7d">{t('monitorDetail.last7d')}</option>
+            <option value="30d">{t('monitorDetail.last30d')}</option>
+            <option value="90d">{t('monitorDetail.last90d')}</option>
           </select>
         </div>
         <div ref={chartRef} className="w-full h-[400px] relative" style={{ zIndex: 1 }}></div>
@@ -935,16 +937,16 @@ export function MonitorDetail({
       
       {/* 历史事件 */}
       <div className="dark:bg-dark-card bg-light-card rounded-lg border border-primary/15 hover:border-primary/30 transition-all p-6">
-        <h3 className="text-lg font-medium mb-4">历史事件</h3>
+        <h3 className="text-lg font-medium mb-4">{t('monitorDetail.historyEvents')}</h3>
         <div className="space-y-4">
           {historyData.length === 0 ? (
             <div className="text-center py-8 text-foreground/60">
-              暂无历史记录
+              {t('monitorDetail.noHistory')}
             </div>
           ) : (
             historyData.slice(0, 20).map((record) => {
               const recordStatus = record.status === 1 ? "success" : "error";
-              const statusText = record.status === 1 ? "服务正常" : "服务故障";
+              const statusText = record.status === 1 ? t('status.serviceUp') : t('status.serviceDown');
               const date = new Date(record.timestamp).toLocaleString();
               
               return (
@@ -955,8 +957,8 @@ export function MonitorDetail({
                     <div className="text-xs text-foreground/50 mt-1">{date}</div>
                     <div className="text-sm text-foreground/70 mt-1">
                       {record.status === 1
-                        ? `响应时间: ${record.ping || 'N/A'}ms`
-                        : record.message || '连接失败'
+                        ? t('monitorDetail.responseTime', { value: record.ping || 'N/A' })
+                        : record.message || t('status.connectionFailed')
                       }
                     </div>
                     {record.message && record.status === 1 && (
@@ -975,11 +977,11 @@ export function MonitorDetail({
             <div className="flex items-start space-x-3">
               <div className="w-3 h-3 rounded-full bg-primary mt-1.5"></div>
               <div>
-                <div className="text-foreground/90">监控创建</div>
+                <div className="text-foreground/90">{t('status.monitorCreated')}</div>
                 <div className="text-xs text-foreground/50 mt-1">
                   {new Date(monitorDetails.createdAt || Date.now()).toLocaleString()}
                 </div>
-                <div className="text-sm text-foreground/70 mt-1">监控项已创建并开始检测</div>
+                <div className="text-sm text-foreground/70 mt-1">{t('status.monitorCreatedDesc')}</div>
               </div>
             </div>
           )}
@@ -989,10 +991,10 @@ export function MonitorDetail({
       {/* 确认删除对话框 */}
       <ConfirmDialog 
         isOpen={showDeleteDialog}
-        title="删除监控项"
-        message="确定要删除此监控项吗？此操作不可恢复。"
-        confirmText="删除"
-        cancelText="取消"
+        title={t('monitorDetail.deleteConfirmTitle')}
+        message={t('monitorDetail.deleteConfirmMessage')}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
         onConfirm={confirmDelete}
         onCancel={handleCancelDelete}
         isDestructive={true}

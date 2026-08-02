@@ -5,25 +5,29 @@ import { useTheme } from "@/components/theme-provider";
 import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { SettingsDialog } from "./settings-dialog";
+import { useI18n } from "@/context/I18nContext";
+import { SUPPORTED_LOCALES, LOCALE_LABELS } from "@/lib/i18n";
 import Link from "next/link";
 
 export function Header() {
   const { theme, setTheme } = useTheme();
   const { data: session } = useSession();
   const router = useRouter();
+  const { t, locale, setLocale } = useI18n();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isProductsOpen, setIsProductsOpen] = useState(false);
+  const [isLangOpen, setIsLangOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const productsDropdownRef = useRef<HTMLDivElement>(null);
+  const langDropdownRef = useRef<HTMLDivElement>(null);
 
-  // 产品推荐列表
   const recommendedProducts = [
-    { title: "ShowDoc", url: "https://www.showdoc.com.cn/", description: "API文档、技术文档工具", icon: "book" },
-    { title: "RunApi", url: "https://www.runapi.com.cn/", description: "接口管理与测试平台", icon: "code" },
-    { title: "大风云", url: "https://www.dfyun.com.cn/", description: "性价比巨高的CDN服务", icon: "cloud" },
-    { title: "Push", url: "https://push.showdoc.com.cn/", description: "消息推送服务", icon: "bell" },
-    { title: "极速箱", url: "https://www.jisuxiang.com/", description: "高颜值开发工具集合", icon: "bell" }
+    { title: "ShowDoc", url: "https://www.showdoc.com.cn/", description: t('header.products.showdoc'), icon: "book" },
+    { title: "RunApi", url: "https://www.runapi.com.cn/", description: t('header.products.runapi'), icon: "code" },
+    { title: locale === 'zh' ? "大风云" : "DafengYun", url: "https://www.dfyun.com.cn/", description: t('header.products.dafengyun'), icon: "cloud" },
+    { title: "Push", url: "https://push.showdoc.com.cn/", description: t('header.products.push'), icon: "bell" },
+    { title: locale === 'zh' ? "极速箱" : "JisuXiang", url: "https://www.jisuxiang.com/", description: t('header.products.jisuxiang'), icon: "bell" }
   ];
 
   const toggleTheme = () => {
@@ -36,11 +40,10 @@ export function Header() {
       router.push("/auth/login");
       router.refresh();
     } catch (error) {
-      console.error("退出登录失败", error);
+      console.error(t('header.logoutFailed'), error);
     }
   };
 
-  // 点击外部关闭下拉菜单
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -48,6 +51,9 @@ export function Header() {
       }
       if (productsDropdownRef.current && !productsDropdownRef.current.contains(event.target as Node)) {
         setIsProductsOpen(false);
+      }
+      if (langDropdownRef.current && !langDropdownRef.current.contains(event.target as Node)) {
+        setIsLangOpen(false);
       }
     };
 
@@ -57,15 +63,12 @@ export function Header() {
     };
   }, []);
 
-  // 处理设置对话框关闭后的刷新
   const handleSettingsClose = () => {
     setIsSettingsOpen(false);
   };
 
-  // 处理设置对话框关闭并刷新
   const handleSettingsCloseWithRefresh = () => {
     setIsSettingsOpen(false);
-    // 延迟刷新，确保对话框完全关闭后再刷新
     setTimeout(() => {
       window.location.reload();
     }, 100);
@@ -76,68 +79,98 @@ export function Header() {
       <nav className="glass-effect fixed top-0 left-80 right-0 h-16 border-b border-primary/10 z-50">
         <div className="container mx-auto px-4 h-full flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <span className="text-xl font-bold text-primary">酷监控</span>
-            <span className="dark:text-white/80 text-light-text-secondary">状态速览</span>
+            <span className="text-xl font-bold text-primary">{t('common.appName')}</span>
+            <span className="dark:text-white/80 text-light-text-secondary">{t('common.tagline')}</span>
           </div>
           <div className="flex items-center space-x-4">
-            <button 
+            <button
               className="p-2 rounded-button hover:bg-primary/10 transition-colors dark:text-white text-light-text-primary"
               onClick={toggleTheme}
-              aria-label="切换主题"
+              aria-label={t('header.toggleTheme')}
             >
               <i className="fas fa-lightbulb"></i>
             </button>
-            
-            <button 
+
+            {/* Language switcher */}
+            <div className="relative" ref={langDropdownRef}>
+              <button
+                className="p-2 rounded-button hover:bg-primary/10 transition-colors dark:text-white text-light-text-primary flex items-center space-x-1"
+                onClick={() => setIsLangOpen(!isLangOpen)}
+                aria-label={t('header.language')}
+                title={t('header.language')}
+              >
+                <i className="fas fa-language"></i>
+                <span className="text-xs">{LOCALE_LABELS[locale]}</span>
+              </button>
+              {isLangOpen && (
+                <div className="absolute right-0 mt-2 w-32 rounded-lg shadow-2xl dark:bg-dark-nav bg-light-nav border-2 border-primary/25 z-[999] overflow-hidden animate-fadeIn">
+                  {SUPPORTED_LOCALES.map((l) => (
+                    <button
+                      key={l}
+                      className={`w-full text-left px-4 py-2.5 hover:bg-primary/10 text-sm flex items-center justify-between transition-colors ${
+                        locale === l ? 'text-primary font-medium bg-primary/5' : 'dark:text-white text-light-text-primary'
+                      }`}
+                      onClick={() => {
+                        setLocale(l);
+                        setIsLangOpen(false);
+                      }}
+                    >
+                      <span>{LOCALE_LABELS[l]}</span>
+                      {locale === l && <i className="fas fa-check text-xs"></i>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
               className="p-2 rounded-button hover:bg-primary/10 transition-colors dark:text-white text-light-text-primary"
               onClick={() => router.push('/dashboard/status-pages')}
-              aria-label="状态页管理"
+              aria-label={t('header.statusPageManage')}
             >
               <i className="fas fa-chart-line"></i>
             </button>
-            
 
-            
-            <button 
+            <button
               className="p-2 rounded-button hover:bg-primary/10 transition-colors dark:text-white text-light-text-primary"
               onClick={() => setIsSettingsOpen(true)}
-              aria-label="设置"
+              aria-label={t('header.settings')}
             >
               <i className="fas fa-cog"></i>
             </button>
-                        
-            {/* GitHub链接 */}
-            <Link 
+
+            {/* GitHub */}
+            <Link
               href="https://github.com/star7th/coolmonitor"
               target="_blank"
               rel="noopener noreferrer"
               className="p-2 rounded-button hover:bg-primary/10 transition-colors dark:text-white text-light-text-primary"
-              aria-label="GitHub仓库"
+              aria-label={t('header.githubRepo')}
             >
               <i className="fab fa-github"></i>
             </Link>
-            
-            {/* 产品推荐下拉框 */}
+
+            {/* Products dropdown */}
             <div className="relative" ref={productsDropdownRef}>
-              <button 
+              <button
                 className="p-2 rounded-button hover:bg-primary/10 transition-colors dark:text-white text-light-text-primary"
                 onClick={() => setIsProductsOpen(!isProductsOpen)}
-                aria-label="更多产品推荐"
+                aria-label={t('header.moreProducts')}
               >
                 <i className="fas fa-th-large"></i>
               </button>
-              
+
               {isProductsOpen && (
                 <div className="absolute right-0 mt-2 w-72 rounded-lg shadow-2xl dark:bg-dark-nav bg-light-nav border-2 border-primary/25 z-[999] overflow-hidden animate-fadeIn">
                   <div className="p-4 border-b border-primary/10 dark:bg-dark-card bg-light-card">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium dark:text-white text-light-text-primary">更多产品推荐</p>
+                      <p className="text-sm font-medium dark:text-white text-light-text-primary">{t('header.moreProducts')}</p>
                     </div>
                   </div>
-                  
+
                   <div className="py-2 max-h-80 overflow-y-auto">
                     {recommendedProducts.map((product, index) => (
-                      <Link 
+                      <Link
                         key={index}
                         href={product.url}
                         target="_blank"
@@ -158,10 +191,9 @@ export function Header() {
               )}
             </div>
 
-            
-            {/* 用户下拉菜单 */}
+            {/* User dropdown */}
             <div className="relative" ref={dropdownRef}>
-              <button 
+              <button
                 className="flex items-center space-x-2 p-2 rounded-button hover:bg-primary/10 transition-colors dark:text-white text-light-text-primary"
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               >
@@ -171,7 +203,7 @@ export function Header() {
                 )}
                 <i className="fas fa-chevron-down text-xs"></i>
               </button>
-              
+
               {isDropdownOpen && (
                 <div ref={dropdownRef} className="absolute right-0 mt-2 w-64 rounded-lg shadow-2xl dark:bg-dark-nav bg-light-nav border-2 border-primary/25 z-[999] overflow-hidden animate-fadeIn">
                   <div className="p-4 border-b border-primary/10 dark:bg-dark-card bg-light-card">
@@ -180,14 +212,14 @@ export function Header() {
                         <i className="fas fa-user"></i>
                       </div>
                       <div>
-                        <p className="text-sm font-medium dark:text-white text-light-text-primary">{session?.user?.name || '用户'}</p>
+                        <p className="text-sm font-medium dark:text-white text-light-text-primary">{session?.user?.name || t('header.user')}</p>
                         <p className="text-xs dark:text-white/60 text-light-text-secondary">{session?.user?.email || ''}</p>
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="py-2">
-                    <button 
+                    <button
                       className="w-full text-left px-4 py-2 hover:bg-primary/10 text-sm flex items-center space-x-2 dark:text-white text-light-text-primary transition-colors"
                       onClick={() => {
                         router.push('/dashboard/login-records');
@@ -195,15 +227,15 @@ export function Header() {
                       }}
                     >
                       <i className="fas fa-history w-5"></i>
-                      <span>登录记录</span>
+                      <span>{t('header.loginRecords')}</span>
                     </button>
-                    
-                    <button 
+
+                    <button
                       className="w-full text-left px-4 py-2 rounded-md hover:bg-red-500/10 text-sm flex items-center space-x-2 text-red-400 transition-colors"
                       onClick={handleLogout}
                     >
                       <i className="fas fa-sign-out-alt w-5"></i>
-                      <span>退出登录</span>
+                      <span>{t('header.logout')}</span>
                     </button>
                   </div>
                 </div>
@@ -212,9 +244,8 @@ export function Header() {
           </div>
         </div>
       </nav>
-      
-             {/* 设置对话框 */}
-       <SettingsDialog isOpen={isSettingsOpen} onClose={handleSettingsClose} onRefresh={handleSettingsCloseWithRefresh} />
+
+      <SettingsDialog isOpen={isSettingsOpen} onClose={handleSettingsClose} onRefresh={handleSettingsCloseWithRefresh} />
     </>
   );
-} 
+}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "react-hot-toast";
+import { useI18n } from "@/context/I18nContext";
 
 interface ScriptActionConfig {
   id: string;
@@ -29,6 +30,7 @@ interface ScriptActionSectionProps {
 }
 
 export function ScriptActionSection({ monitorId }: ScriptActionSectionProps) {
+  const { t } = useI18n();
   const [script, setScript] = useState("");
   const [enabled, setEnabled] = useState(false);
   const [triggerCondition, setTriggerCondition] =
@@ -67,7 +69,7 @@ export function ScriptActionSection({ monitorId }: ScriptActionSectionProps) {
       }
     } catch (error) {
       console.error("加载脚本动作配置失败:", error);
-      toast.error("加载脚本动作配置失败");
+      toast.error(t('scriptAction.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -111,13 +113,13 @@ export function ScriptActionSection({ monitorId }: ScriptActionSectionProps) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "保存失败");
+        throw new Error(errorData.error || t('scriptAction.saveFailedShort'));
       }
 
-      toast.success("脚本动作配置已保存");
+      toast.success(t('scriptAction.configSaved'));
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "保存脚本动作配置失败"
+        error instanceof Error ? error.message : t('scriptAction.saveFailed')
       );
     } finally {
       setIsSaving(false);
@@ -143,23 +145,23 @@ export function ScriptActionSection({ monitorId }: ScriptActionSectionProps) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "模拟运行失败");
+        throw new Error(errorData.error || t('scriptAction.simulateFailed'));
       }
 
       const data = await response.json();
       setLastTestResult(data.result);
-      toast.success("模拟运行完成");
+      toast.success(t('scriptAction.simulateDone'));
       // 刷新历史
       loadHistory();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "模拟运行失败");
+      toast.error(error instanceof Error ? error.message : t('scriptAction.simulateFailed'));
     } finally {
       setIsTesting(false);
     }
   };
 
   // 状态文本
-  const getStatusText = (status: number) => (status === 1 ? "正常" : "故障");
+  const getStatusText = (status: number) => (status === 1 ? t('status.up') : t('status.down'));
 
   // 格式化耗时
   const formatDuration = (ms: number) => {
@@ -202,9 +204,9 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
   const handleCopyPrompt = async () => {
     try {
       await navigator.clipboard.writeText(buildPrompt());
-      toast.success("提示词已复制到剪贴板，粘贴给 AI 即可");
+      toast.success(t('scriptAction.promptCopied'));
     } catch {
-      toast.error("复制失败，请手动选中复制");
+      toast.error(t('common.copyFailed'));
     }
   };
 
@@ -213,7 +215,7 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
       <div className="dark:bg-dark-card bg-light-card rounded-lg border border-primary/15 hover:border-primary/30 transition-all p-6">
         <div className="flex items-center text-foreground/60">
           <i className="fas fa-spinner fa-spin mr-2"></i>
-          加载脚本动作配置...
+          {t('scriptAction.loadingConfig')}
         </div>
       </div>
     );
@@ -226,12 +228,12 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
             <i className="fas fa-code text-primary"></i>
-            <h3 className="text-lg font-medium">自定义脚本动作</h3>
+            <h3 className="text-lg font-medium">{t('monitorForm.scriptActionTitle')}</h3>
           </div>
           {/* 启用开关 */}
           <label className="flex items-center cursor-pointer space-x-2">
             <span className="text-sm text-foreground/70">
-              {enabled ? "已启用" : "已禁用"}
+              {enabled ? t('scriptAction.enabled') : t('scriptAction.disabled')}
             </span>
             <div className="relative">
               <input
@@ -259,7 +261,7 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div className="space-y-2">
             <label className="block text-foreground/80 font-medium">
-              触发条件
+              {t('scriptAction.triggerCondition')}
             </label>
             <select
               value={triggerCondition}
@@ -270,18 +272,18 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
               }
               className="w-full px-4 py-2 rounded-lg dark:bg-dark-input bg-light-input border border-primary/20 focus:border-primary focus:outline-none"
             >
-              <option value="both">状态变化时触发（UP 和 DOWN）</option>
-              <option value="down">仅在 DOWN 时触发</option>
-              <option value="up">仅在 UP 时触发</option>
+              <option value="both">{t('scriptAction.triggerBoth')}</option>
+              <option value="down">{t('scriptAction.triggerDown')}</option>
+              <option value="up">{t('scriptAction.triggerUp')}</option>
             </select>
             <p className="text-xs text-foreground/50">
-              选择脚本在什么状态下自动执行
+              {t('scriptAction.triggerHint')}
             </p>
           </div>
 
           <div className="space-y-2">
             <label className="block text-foreground/80 font-medium">
-              执行超时（秒）
+              {t('scriptAction.execTimeout')}
             </label>
             <input
               type="number"
@@ -294,7 +296,7 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
               max="600"
             />
             <p className="text-xs text-foreground/50">
-              超时后脚本将被强制终止（1-600 秒）
+              {t('scriptAction.execTimeoutHint')}
             </p>
           </div>
         </div>
@@ -303,7 +305,7 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
         <div className="space-y-2 mb-6">
           <div className="flex items-center justify-between">
             <label className="block text-foreground/80 font-medium">
-              Node.js 脚本
+              {t('scriptAction.nodeScript')}
             </label>
             <button
               type="button"
@@ -311,7 +313,7 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
               className="text-xs text-primary hover:underline flex items-center"
             >
               <i className="fas fa-magic-wand-sparkles mr-1"></i>
-              如何让 AI 帮我写脚本
+              {t('scriptAction.aiHelp')}
             </button>
           </div>
           <textarea
@@ -329,8 +331,7 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
             placeholder="module.exports = async (ctx) => { ... }"
           />
           <p className="text-xs text-foreground/50">
-            脚本在独立子进程中执行，导出一个 async 函数，参数 ctx 包含监控上下文信息。
-            脚本异常或超时不会影响 coolmonitor 主进程。
+            {t('scriptAction.scriptHint')}
           </p>
         </div>
 
@@ -344,17 +345,17 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
           >
             {isSaving ? (
               <>
-                <i className="fas fa-circle-notch fa-spin mr-2"></i>保存中...
+                <i className="fas fa-circle-notch fa-spin mr-2"></i>{t('common.saving')}
               </>
             ) : (
               <>
-                <i className="fas fa-save mr-2"></i>保存配置
+                <i className="fas fa-save mr-2"></i>{t('scriptAction.saveConfig')}
               </>
             )}
           </button>
 
           <div className="flex items-center gap-2 px-3 py-1.5 border border-primary/20 rounded-button">
-            <span className="text-sm text-foreground/70 mr-1">模拟运行:</span>
+            <span className="text-sm text-foreground/70 mr-1">{t('scriptAction.simulateRun')}</span>
             <button
               type="button"
               onClick={() => handleTest(1)}
@@ -380,7 +381,7 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
             <div className="flex items-center justify-between mb-2">
               <span className="font-medium">
                 <i className="fas fa-flask mr-2 text-primary"></i>
-                模拟运行结果（{getStatusText(lastTestResult.currentStatus)}）
+                {t('scriptAction.simulateResult')}（{getStatusText(lastTestResult.currentStatus)}）
               </span>
               <span
                 className={`px-2 py-0.5 rounded text-xs font-medium ${
@@ -390,10 +391,10 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
                 }`}
               >
                 {lastTestResult.success
-                  ? "成功"
+                  ? t('common.success')
                   : lastTestResult.timedOut
-                  ? "超时"
-                  : "失败"}
+                  ? t('common.timeout')
+                  : t('common.failed')}
               </span>
             </div>
             <div className="text-xs text-foreground/60 mb-2">
@@ -420,20 +421,20 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium">
             <i className="fas fa-history mr-2 text-primary"></i>
-            执行历史
+            {t('scriptAction.executionHistory')}
           </h3>
           <button
             type="button"
             onClick={loadHistory}
             className="text-sm text-primary hover:underline"
           >
-            <i className="fas fa-sync mr-1"></i>刷新
+            <i className="fas fa-sync mr-1"></i>{t('common.refresh')}
           </button>
         </div>
 
         {executions.length === 0 ? (
           <div className="text-center py-8 text-foreground/60">
-            暂无执行记录
+            {t('scriptAction.noExecutions')}
           </div>
         ) : (
           <div className="space-y-3">
@@ -464,8 +465,8 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
                       <div>
                         <div className="text-sm font-medium">
                           {exec.triggerSource === "simulate"
-                            ? "模拟运行"
-                            : "状态触发"}
+                            ? t('scriptAction.simulatedRun')
+                            : t('scriptAction.statusTriggered')}
                           {` · ${getStatusText(exec.currentStatus)}`}
                         </div>
                         <div className="text-xs text-foreground/50">
@@ -485,10 +486,10 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
                         }`}
                       >
                         {exec.success
-                          ? "成功"
+                          ? t('common.success')
                           : exec.timedOut
-                          ? "超时"
-                          : "失败"}
+                          ? t('common.timeout')
+                          : t('common.failed')}
                       </span>
                       <i
                         className={`fas fa-chevron-${
@@ -510,7 +511,7 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
                         </pre>
                       ) : (
                         <div className="text-xs text-foreground/50">
-                          无输出
+                          {t('scriptAction.noOutput')}
                         </div>
                       )}
                     </div>
@@ -533,7 +534,7 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
             <div className="sticky top-0 z-10 dark:bg-dark-card bg-light-card border-b border-primary/10 px-6 py-4 flex justify-between items-center">
               <h2 className="text-lg font-bold text-foreground flex items-center">
                 <i className="fas fa-magic-wand-sparkles mr-2 text-primary"></i>
-                如何让 AI 帮我写脚本
+                {t('scriptAction.aiHelp')}
               </h2>
               <button
                 type="button"
@@ -547,14 +548,13 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
             <div className="p-6 space-y-5">
               {/* 说明 */}
               <div className="text-sm text-foreground/70 leading-relaxed">
-                你可以用 AI（如 ChatGPT、Claude、通义千问等）帮你生成脚本。
-                在下方描述你的需求，点击复制，然后把提示词粘贴给 AI 即可。
+                {t('scriptAction.aiHelpIntro')}
               </div>
 
               {/* 需求输入 */}
               <div className="space-y-2">
                 <label className="block text-foreground/80 font-medium">
-                  你的需求
+                  {t('scriptAction.yourRequirement')}
                 </label>
                 <textarea
                   value={userRequirement}
@@ -563,7 +563,7 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
                   placeholder={"例如：当监控状态变为 DOWN 时，调用 Cloudflare API 将 DNS 记录切换到备用服务器 IP 1.2.3.4；状态恢复为 UP 时切回原 IP。\n\n尽量描述清楚：\n- 什么状态下执行\n- 调用什么 API / 命令\n- 关键参数（域名、token 等）"}
                 />
                 <p className="text-xs text-foreground/50">
-                  描述得越具体，AI 生成的脚本越准确
+                  {t('scriptAction.requirementHint')}
                 </p>
               </div>
 
@@ -571,7 +571,7 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="block text-foreground/80 font-medium">
-                    生成的提示词
+                    {t('scriptAction.generatedPrompt')}
                   </label>
                   <button
                     type="button"
@@ -579,7 +579,7 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
                     className="bg-gradient-to-r from-primary to-secondary text-white px-4 py-1.5 rounded-button hover:opacity-90 transition-all text-xs flex items-center"
                   >
                     <i className="fas fa-copy mr-1.5"></i>
-                    复制提示词
+                    {t('scriptAction.copyPrompt')}
                   </button>
                 </div>
                 <pre className="text-xs text-foreground/70 dark:bg-dark-nav bg-light-nav border border-primary/10 p-4 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-72 overflow-y-auto leading-relaxed">
@@ -589,14 +589,14 @@ ${userRequirement.trim() || "<请在这里描述你的需求，例如：当监�
 
               {/* 使用步骤 */}
               <div className="p-4 rounded-lg border border-primary/10 dark:bg-dark-nav bg-light-nav">
-                <div className="text-sm font-medium text-foreground/80 mb-2">使用步骤</div>
+                <div className="text-sm font-medium text-foreground/80 mb-2">{t('scriptAction.usageSteps')}</div>
                 <ol className="text-xs text-foreground/60 space-y-1.5 list-decimal list-inside">
-                  <li>在上方填写你的具体需求</li>
-                  <li>点击「复制提示词」按钮</li>
-                  <li>粘贴给任意 AI 对话窗口</li>
-                  <li>将 AI 生成的代码复制回上方的脚本编辑器</li>
-                  <li>点击「模拟运行」测试效果</li>
-                  <li>测试通过后点击「保存配置」并启用</li>
+                  <li>{t('scriptAction.step1')}</li>
+                  <li>{t('scriptAction.step2')}</li>
+                  <li>{t('scriptAction.step3')}</li>
+                  <li>{t('scriptAction.step4')}</li>
+                  <li>{t('scriptAction.step5')}</li>
+                  <li>{t('scriptAction.step6')}</li>
                 </ol>
               </div>
             </div>

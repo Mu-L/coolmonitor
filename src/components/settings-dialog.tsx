@@ -5,6 +5,7 @@ import { SystemSettings } from "./settings/system-settings";
 import { NotificationSettings } from "./settings/notification-settings";
 import { AboutSettings } from "./settings/about-settings";
 import { MonitorGroupSettings } from "./settings/monitor-group-settings";
+import { useI18n } from "@/context/I18nContext";
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -12,21 +13,35 @@ interface SettingsDialogProps {
   onRefresh?: () => void; // 添加刷新回调
 }
 
-type TabType = "系统设置" | "通知设置" | "监控分组" | "关于";
+type TabType = "system" | "notification" | "groups" | "about";
 
 export function SettingsDialog({ isOpen, onClose, onRefresh }: SettingsDialogProps) {
-  const [activeTab, setActiveTab] = useState<TabType>("系统设置");
+  const { t } = useI18n();
+  const [activeTab, setActiveTab] = useState<TabType>("system");
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean | null>(null);
 
   if (!isOpen) return null;
+
+  const getTabLabel = (tab: TabType) => {
+    switch (tab) {
+      case 'system':
+        return t('settingsDialog.tabSystem');
+      case 'notification':
+        return t('settingsDialog.tabNotification');
+      case 'groups':
+        return t('settingsDialog.tabGroups');
+      case 'about':
+        return t('settingsDialog.tabAbout');
+    }
+  };
 
   // 处理设置保存
   const handleSaveSettings = async () => {
     setIsSaving(true);
     
     try {
-      if (activeTab === "系统设置") {
+      if (activeTab === "system") {
         // 获取表单数据
         const systemSettingsForm = document.getElementById('system-settings-form') as HTMLFormElement;
         if (systemSettingsForm) {
@@ -73,10 +88,10 @@ export function SettingsDialog({ isOpen, onClose, onRefresh }: SettingsDialogPro
           console.error('未找到系统设置表单');
           // 这里可以添加错误提示逻辑
         }
-      } else if (activeTab === "通知设置") {
+      } else if (activeTab === "notification") {
         // 通知设置已经有自己的保存机制
         onClose(); // 关闭对话框
-      } else if (activeTab === "监控分组") {
+      } else if (activeTab === "groups") {
         // 监控分组设置已经有自己的保存机制
         onClose(); // 关闭对话框
         // 如果提供了刷新回调，调用它来刷新页面
@@ -100,12 +115,12 @@ export function SettingsDialog({ isOpen, onClose, onRefresh }: SettingsDialogPro
       >
         {/* 标题栏 */}
         <div className="flex justify-between items-center p-6 border-b border-primary/10">
-          <h2 className="text-xl font-bold dark:text-foreground text-light-text-primary">设置</h2>
+          <h2 className="text-xl font-bold dark:text-foreground text-light-text-primary">{t('settingsDialog.title')}</h2>
                      <button 
              onClick={() => {
                onClose();
                                 // 如果当前是监控分组页面，调用刷新回调
-                 if (activeTab === "监控分组" && onRefresh) {
+                 if (activeTab === "groups" && onRefresh) {
                    setTimeout(() => {
                      onRefresh();
                    }, 100);
@@ -121,7 +136,7 @@ export function SettingsDialog({ isOpen, onClose, onRefresh }: SettingsDialogPro
           {/* 侧边标签栏 */}
           <div className="w-64 border-r border-primary/10 p-5 bg-dark-card/50 dark:bg-dark-card/50 bg-light-card/50">
             <nav className="space-y-2">
-              {(["系统设置", "通知设置", "监控分组", "关于"] as TabType[]).map((tab) => (
+              {(["system", "notification", "groups", "about"] as TabType[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -135,13 +150,13 @@ export function SettingsDialog({ isOpen, onClose, onRefresh }: SettingsDialogPro
                     activeTab === tab ? "bg-primary/20" : "bg-primary/10"
                   }`}>
                     <i className={`fas fa-${
-                      tab === "系统设置" ? "cogs" : 
-                      tab === "通知设置" ? "bell" : 
-                      tab === "监控分组" ? "folder" :
+                      tab === "system" ? "cogs" : 
+                      tab === "notification" ? "bell" : 
+                      tab === "groups" ? "folder" :
                       "info-circle"
                     }`}></i>
                   </div>
-                  <span>{tab}</span>
+                  <span>{getTabLabel(tab)}</span>
                 </button>
               ))}
             </nav>
@@ -149,10 +164,10 @@ export function SettingsDialog({ isOpen, onClose, onRefresh }: SettingsDialogPro
           
           {/* 内容区域 */}
           <div className="flex-1 overflow-y-auto p-7">
-            {activeTab === "系统设置" && <SystemSettings />}
-            {activeTab === "通知设置" && <NotificationSettings />}
-            {activeTab === "监控分组" && <MonitorGroupSettings />}
-            {activeTab === "关于" && <AboutSettings />}
+            {activeTab === "system" && <SystemSettings />}
+            {activeTab === "notification" && <NotificationSettings />}
+            {activeTab === "groups" && <MonitorGroupSettings />}
+            {activeTab === "about" && <AboutSettings />}
           </div>
         </div>
         
@@ -163,7 +178,7 @@ export function SettingsDialog({ isOpen, onClose, onRefresh }: SettingsDialogPro
                onClick={() => {
                  onClose();
                  // 如果当前是监控分组页面，调用刷新回调
-                 if (activeTab === "监控分组" && onRefresh) {
+                 if (activeTab === "groups" && onRefresh) {
                    setTimeout(() => {
                      onRefresh();
                    }, 100);
@@ -171,10 +186,10 @@ export function SettingsDialog({ isOpen, onClose, onRefresh }: SettingsDialogPro
                }}
                className="px-5 py-2.5 bg-primary/5 text-primary rounded-lg hover:bg-primary/10 transition-all text-sm font-medium"
              >
-               关闭
+               {t('common.close')}
              </button>
             
-            {activeTab !== "关于" && activeTab !== "监控分组" && (
+            {activeTab !== "about" && activeTab !== "groups" && (
               <button 
                 onClick={handleSaveSettings}
                 disabled={isSaving}
@@ -185,12 +200,12 @@ export function SettingsDialog({ isOpen, onClose, onRefresh }: SettingsDialogPro
                 {isSaving ? (
                   <>
                     <i className="fas fa-spinner fa-spin mr-2"></i>
-                    <span>保存中...</span>
+                    <span>{t('common.saving')}</span>
                   </>
                 ) : (
                   <>
                     <i className="fas fa-save mr-2"></i>
-                    <span>保存设置</span>
+                    <span>{t('common.save')}</span>
                   </>
                 )}
               </button>
@@ -212,7 +227,7 @@ export function SettingsDialog({ isOpen, onClose, onRefresh }: SettingsDialogPro
             } flex items-center justify-center mr-3`}>
               <i className={`fas ${saveSuccess ? 'fa-check' : 'fa-exclamation'} text-xl`}></i>
             </div>
-            <span className="text-lg font-medium">{saveSuccess ? '设置已成功保存' : '保存失败，请重试'}</span>
+            <span className="text-lg font-medium">{saveSuccess ? t('systemSettings.settingsSaved') : t('systemSettings.saveFailed')}</span>
           </div>
         </div>
       )}

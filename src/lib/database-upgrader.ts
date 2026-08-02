@@ -413,6 +413,22 @@ const DB_VERSIONS = [
         `);
       }
     }
+  },
+  {
+    version: 12,
+    name: '用户语言偏好字段',
+    requiredTables: ['User'],
+    check: async () => {
+      return await hasColumn('User', 'preferredLanguage');
+    },
+    upgrade: async () => {
+      // 为 User 表添加 preferredLanguage 列，用于记录用户偏好语言（'zh' | 'en'）
+      if (!await hasColumn('User', 'preferredLanguage')) {
+        await prisma.$executeRawUnsafe(`
+          ALTER TABLE "User" ADD COLUMN "preferredLanguage" TEXT;
+        `);
+      }
+    }
   }
 ];
 
