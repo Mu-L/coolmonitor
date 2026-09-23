@@ -1,6 +1,7 @@
 import NextAuth, { AuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { verifyPassword, recordLoginAttempt } from '@/lib/auth';
+import { clientIpFromHeaders, isLocked, recordFail, recordSuccess } from '@/lib/login-throttle';
 import { getOrCreateJwtSecret } from '@/lib/system-config';
 import { prisma } from '@/lib/prisma';
 
@@ -29,9 +30,14 @@ export const buildAuthOptions = async (): Promise<AuthOptions> => {
           try {
             // 获取请求IP和UA信息
             const userAgent = req?.headers?.['user-agent'] || '';
-            const forwardedFor = req?.headers?.['x-forwarded-for'] as string || '';
-            const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : '';
-            
+            const ip = clientIpFromHeaders(req?.headers);
+
+            // 暴力破解防护：锁定中的账号直接拒绝（错误文案统一为「账号或密码不正确」，服务端日志留痕）
+            if (isLocked(credentials.login)) {
+              console.warn(`登录锁定中，拒绝尝试: ip=${ip} login=${credentials.login}`);
+              return null;
+            }
+
             const user = await verifyPassword(
               credentials.login,
               credentials.password
@@ -39,7 +45,10 @@ export const buildAuthOptions = async (): Promise<AuthOptions> => {
 
             if (!user) {
               console.log("用户验证失败");
-              
+
+              // 记录失败（达阈值会触发锁定）
+              recordFail(credentials.login);
+
               // 尝试查找用户ID以记录失败的登录尝试
               const userCheck = await prisma.user.findFirst({
                 where: {
@@ -64,7 +73,8 @@ export const buildAuthOptions = async (): Promise<AuthOptions> => {
               return null;
             }
 
-            // 记录登录成功
+            // 记录登录成功（清除失败计数）
+            recordSuccess(credentials.login);
             await recordLoginAttempt({
               userId: user.id,
               ipAddress: ip,
